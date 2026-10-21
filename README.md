@@ -15,10 +15,10 @@ npm run dev
 Open http://127.0.0.1:4173. Node.js 24 is recommended. The dashboard starts with clearly labeled **illustrative data** and makes no registry/security requests until you opt in.
 
 1. Choose a healthy, vulnerable, or mixed example.
-2. Import `glow.config.yaml`, `package.json`, or `requirements.txt`, or paste the contents.
+2. Import `glow.config.yaml`, `package.json`, `requirements.txt`, a C# `.csproj`, or `packages.config`, or paste the contents.
 3. Switch **Health / Security / Dependency** views; select blocks to inspect versions, licenses, advisories, and reverse-dependency impact.
 4. Filter packages/services, search, zoom, or use the audience shortcuts.
-5. Choose **Refresh once** or enable 60-second polling for public npm metadata, OSV advisories, and configured GitHub commit statuses.
+5. Choose **Refresh once** or enable 60-second polling for public npm/NuGet metadata, OSV advisories, and configured GitHub commit statuses.
 6. Export a JSON snapshot for an audit or incident handoff.
 
 ## Configuration
@@ -55,12 +55,20 @@ Impact analysis traces declared relationships; it does **not** predict breaking 
 ## Live data and privacy
 
 - **npm registry:** latest tag, description, license, and latest-release deprecation metadata for npm packages. A version different from the latest tag is a review hint, not a proven upgrade recommendation.
-- **OSV:** vulnerability queries for exact npm/PyPI versions only. Ranges, aliases, URLs, and unknown versions remain unscanned. PyPI registry release metadata is not fetched.
+- **NuGet.org:** latest stable version from the public version index. No NuGet license, description, or deprecation metadata is fetched. NuGet IDs are normalized to lowercase; names must remain globally unique. Private feeds and credentials are unsupported.
+- **OSV:** vulnerability queries for exact npm/PyPI/NuGet versions only. Ranges, aliases, URLs, MSBuild properties, and unknown versions remain unscanned. PyPI registry release metadata is not fetched.
+- **NuGet security coverage:** OSV matches NuGet names case-sensitively. Glow preserves imported package spelling for queries, separately from lowercase graph IDs. Empty NuGet results are labeled `limited coverage` and remain yellow in Security, never clean; advisory spelling can still differ.
 - **GitHub:** optional public `owner/repo` combined commit status on `HEAD`. This is not Actions check-run monitoring, service uptime, or a deployment health probe.
 - Polling waits 60 seconds **after completion**, with at most four concurrent requests and 12-second request timeouts. There is no background monitoring after closing the page.
 - No API tokens, cookies, analytics, or persistent configuration storage. Imports are rendered locally. Live mode shares package names/versions and configured repository names with the services above.
 - Source errors, rate limits, CORS restrictions, and unresolved versions remain visible. A successful empty scan is **not a security guarantee**. Configured findings remain visible even when OSV returns no findings; edit the config to remove stale configured evidence.
 - Manifests enumerate direct dependencies only. Supply nested package/service relationships in YAML; Glow does not resolve lockfiles or fetch a transitive dependency tree.
+
+### C# / NuGet imports
+
+Import `.csproj` for unconditional `PackageReference` declarations or `packages.config` for installed versions. A bare `.csproj` version is a minimum constraint, not an installed version, so `1.2.3` becomes `>=1.2.3` and remains unscanned; an exact `[1.2.3]` constraint becomes `1.2.3`. Missing versions and MSBuild properties remain unresolved. Use `ecosystem: NuGet` and an independently verified exact version in YAML for resolved snapshots.
+
+Glow never evaluates MSBuild, imports files, or restores packages. Conditional package references, project references, central package definitions, and unsupported update constructs are rejected rather than guessed. Model projects as explicit YAML services. Restore assets, lockfiles, multiple versions of the same package, and target-framework-specific graphs are not supported. See [usage](docs/USAGE.md) for details.
 
 ## Claude skill and iso-glow
 
@@ -90,7 +98,12 @@ The [deployment workflow](.github/workflows/deploy.yml) tests and builds every P
 - [Usage and stakeholder workflows](docs/USAGE.md)
 - [Configuration schema and module API](docs/API.md)
 - [npm registry API](https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md)
+- [NuGet version index API](https://learn.microsoft.com/en-us/nuget/api/package-base-address-resource)
+- [NuGet version ranges](https://learn.microsoft.com/en-us/nuget/concepts/package-versioning)
+- [NuGet PackageReference](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files)
+- [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser)
 - [OSV query API](https://google.github.io/osv.dev/api/#tag/vulnerability/operation/OSV_Query)
+- [OSV ecosystem identifiers](https://github.com/ossf/osv-schema/blob/main/validation/schema.json) and [NuGet version support](https://github.com/google/osv.dev/blob/master/osv/ecosystems/nuget.py)
 - [GitHub combined status API](https://docs.github.com/en/rest/commits/statuses#get-the-combined-status-for-a-specific-reference)
 - [GitHub Pages with Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 - [Claude skills](https://docs.anthropic.com/en/docs/claude-code/skills)

@@ -93,3 +93,114 @@ test('repeated API refresh resets live GitHub failure on recovery', async () => 
   assert.equal(recovered.status, 'healthy');
   assert.equal(recovered.githubStatus, 'success');
 });
+
+test('exact version rules are ecosystem-specific and conservative for NuGet', () => {
+  for (const version of ['1', '1.2', '1.2.3', '1.2.3.4', '1.2.3-rc.1', '1.2.3+build.7']) {
+    assert.equal(exactVersion({ ecosystem: 'NuGet', version }), true, version);
+  }
+  for (const version of ['*', '1.*', '[1.0]', '[1,2)', '>=1.0', '$(Version)', '1.2rc1', '1.2.3.4.5', '1.0-', '1.0-a..b']) {
+    assert.equal(exactVersion({ ecosystem: 'NuGet', version }), false, version);
+  }
+  assert.equal(exactVersion({ ecosystem: 'unknown', version: '1.2.3' }), false);
+});
+
+const nugetNode = (extra = {}) => ({ ...node(), name: 'newtonsoft.json', id: 'newtonsoft.json', ecosystem: 'NuGet', ...extra });
+
+test('NuGet registry uses fixed lowercase endpoint, latest stable release and shared request protections', async () => {
+  const calls = [];
+  const controller = new AbortController();
+  const original = nugetNode({ version: '12.0.1' });
+  const result = await enrichNode(original, { signal: controller.signal, fetcher: async (url, options) => {
+    calls.push([url, options]);
+    return response(new URL(url).hostname === 'api.nuget.org'
+      ? { versions: ['12.0.1', '13.0.3', '14.0.1-beta1'] }
+      : { vulns: [{ id: 'GHSA-nuget-test', summary: 'NuGet finding' }] });
+  } });
+  assert.equal(calls[0][0], 'https://api.nuget.org/v3-flatcontainer/newtonsoft.json/index.json');
+  assert.deepEqual(JSON.parse(calls[1][1].body), {
+    package: { name: 'newtonsoft.json', ecosystem: 'NuGet' }, version: '12.0.1',
+  });
+  for (const [, options] of calls) {
+    assert.equal(options.credentials, 'omit');
+    assert.equal(options.referrerPolicy, 'no-referrer');
+    assert.ok(options.signal instanceof AbortSignal);
+  }
+  assert.equal(result.latest, '13.0.3');
+  assert.equal(result.updateAvailable, true);
+  assert.equal(result.scan, 'findings');
+  assert.equal(result.license, original.license);
+  assert.equal(original.scan, 'not checked');
+});
+
+test('NuGet normalized equivalent versions do not report metadata-only differences', async () => {
+  for (const version of ['01.0', '1.0.0.0', '1.0.0+build']) {
+    const result = await enrichNode(nugetNode({ version }), { fetcher: async url =>
+      response(new URL(url).hostname === 'api.nuget.org' ? { versions: ['1.0.0'] } : {}) });
+    assert.equal(result.updateAvailable, false, version);
+    assert.equal(result.scan, 'limited coverage');
+  }
+});
+
+test('NuGet unresolved declarations get metadata but never a clean security scan', async () => {
+  for (const version of ['>=1.0.0', '$(PackageVersion)', '[1.0,2.0)', '1.*', '*']) {
+    const result = await enrichNode(nugetNode({ version }), { fetcher: async url => {
+      assert.equal(new URL(url).hostname, 'api.nuget.org');
+      return response({ versions: ['1.0.0'] });
+    } });
+    assert.equal(result.scan, 'unresolved version');
+    assert.equal(result.updateAvailable, false);
+    assert.equal(health(result, 'security'), 'warning');
+  }
+});
+
+test('NuGet registry failures and malformed responses remain independent from OSV results', async () => {
+  for (const metadata of [null, {}, { versions: [] }, { versions: [42] }, { versions: ['latest'] }]) {
+    const result = await enrichNode(nugetNode(), { fetcher: async url =>
+      response(new URL(url).hostname === 'api.nuget.org' ? metadata : {}) });
+    assert.match(result.errors[0], /NuGet metadata: Invalid NuGet/);
+    assert.equal(result.scan, 'limited coverage');
+  }
+  const failed = await enrichNode(nugetNode(), { fetcher: async () => ({ ok: false, status: 429 }) });
+  assert.equal(failed.errors.length, 2);
+  assert.equal(failed.scan, 'unavailable');
+  assert.equal(health(failed, 'security'), 'warning');
+});
+
+test('unknown ecosystems never query OSV or receive scan clearance', async () => {
+  const result = await enrichNode({ ...node(), ecosystem: 'unsupported' }, {
+    fetcher: () => assert.fail('unsupported providers must not be queried'),
+  });
+  assert.equal(result.scan, 'unsupported ecosystem');
+  assert.equal(health(result, 'security'), 'warning');
+});
+
+test('NuGet prerelease-only metadata does not invent a stable latest release', async () => {
+  const result = await enrichNode(nugetNode(), { fetcher: async url =>
+    response(new URL(url).hostname === 'api.nuget.org' ? { versions: ['1.0.0-beta'] } : {}) });
+  assert.equal(result.latest, '');
+  assert.equal(result.updateAvailable, false);
+});
+
+test('NuGet refresh preserves configured findings and replaces live findings', async () => {
+  const configured = nugetNode({ advisories: [{ id: 'configured' }], vulnerabilityCount: 1 });
+  const first = await enrichNode(configured, { fetcher: async url => response(new URL(url).hostname === 'api.nuget.org'
+    ? { versions: ['1.0.0'] } : { vulns: [{ id: 'live' }] }) });
+  const second = await enrichNode(first, { fetcher: async url => response(new URL(url).hostname === 'api.nuget.org'
+    ? { versions: ['1.0.0'] } : {}) });
+  assert.equal(first.vulnerabilityCount, 2);
+  assert.deepEqual(second.advisories.map(advisory => advisory.id), ['configured']);
+  assert.equal(second.vulnerabilityCount, 1);
+  assert.equal(second.scan, 'findings');
+  assert.equal(health(second, 'security'), 'critical');
+});
+
+test('NuGet queries preserve package spelling and empty results never imply case-insensitive coverage', async () => {
+  const result = await enrichNode(nugetNode({ packageName: 'Newtonsoft.Json' }), { fetcher: async (url, options) => {
+    if (new URL(url).hostname === 'api.nuget.org') return response({ versions: ['1.0.0'] });
+    assert.deepEqual(JSON.parse(options.body).package, { name: 'Newtonsoft.Json', ecosystem: 'NuGet' });
+    return response({});
+  } });
+  assert.equal(result.scan, 'limited coverage');
+  assert.equal(health(result, 'security'), 'warning');
+  assert.ok(result.checkedAt);
+});

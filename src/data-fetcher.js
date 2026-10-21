@@ -1,7 +1,17 @@
 export function exactVersion(node) {
-  return node.ecosystem === 'npm'
-    ? /^\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?$/.test(node.version)
-    : /^\d+(?:\.\d+)*(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?$/.test(node.version);
+  switch (node.ecosystem) {
+    case 'npm': return /^\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?$/.test(node.version);
+    case 'PyPI': return /^\d+(?:\.\d+)*(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?$/.test(node.version);
+    case 'NuGet': return /^\d+(?:\.\d+){0,3}(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(node.version);
+    default: return false;
+  }
+}
+
+function nugetVersionKey(version) {
+  const [release, prerelease = ''] = version.split('+')[0].toLowerCase().split(/-(.*)/s);
+  const parts = release.split('.').map(part => BigInt(part).toString());
+  while (parts.length < 4) parts.push('0');
+  return `${parts.join('.')}-${prerelease}`;
 }
 
 async function json(url, options, fetcher, signal) {
@@ -37,11 +47,30 @@ export async function enrichNode(original, { fetcher = fetch, signal } = {}) {
         node.errors.push(`npm metadata: ${error.message}`);
       }
     }
-    if (exactVersion(node)) {
+    if (node.ecosystem === 'NuGet') {
+      try {
+        const metadata = await json(`https://api.nuget.org/v3-flatcontainer/${encodeURIComponent(node.name.toLowerCase())}/index.json`, {}, fetcher, signal);
+        if (!Array.isArray(metadata?.versions) || !metadata.versions.length
+          || metadata.versions.some(version => typeof version !== 'string' || !exactVersion({ ecosystem: 'NuGet', version }))) {
+          throw new Error('Invalid NuGet versions response');
+        }
+        node.latest = metadata.versions.filter(version => !version.split('+')[0].includes('-')).at(-1) ?? '';
+        node.updateAvailable = Boolean(exactVersion(node) && node.latest
+          && nugetVersionKey(node.version) !== nugetVersionKey(node.latest));
+      } catch (error) {
+        node.errors.push(`NuGet metadata: ${error.message}`);
+      }
+    }
+    if (!['npm', 'PyPI', 'NuGet'].includes(node.ecosystem)) {
+      node.scan = 'unsupported ecosystem';
+    } else if (exactVersion(node)) {
       try {
         const result = await json('https://api.osv.dev/v1/query', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ package: { name: node.name, ecosystem: node.ecosystem }, version: node.version }),
+          body: JSON.stringify({
+            package: { name: node.ecosystem === 'NuGet' ? node.packageName ?? node.name : node.name, ecosystem: node.ecosystem },
+            version: node.version,
+          }),
         }, fetcher, signal);
         if (!result || typeof result !== 'object' || (result.vulns !== undefined && !Array.isArray(result.vulns))) {
           throw new Error('Invalid OSV response');
@@ -52,7 +81,7 @@ export async function enrichNode(original, { fetcher = fetch, signal } = {}) {
         }));
         node.advisories = [...new Map([...node.advisories, ...findings].map(item => [item.id, item])).values()];
         node.vulnerabilityCount = Math.max(node.vulnerabilityCount, node.advisories.length);
-        node.scan = node.vulnerabilityCount ? 'findings' : 'clean';
+        node.scan = node.vulnerabilityCount ? 'findings' : node.ecosystem === 'NuGet' ? 'limited coverage' : 'clean';
         node.checkedAt = new Date().toISOString();
       } catch (error) {
         node.scan = 'unavailable';

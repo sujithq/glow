@@ -29,7 +29,7 @@
           <option value="vulnerable.config.yaml">Vulnerable / incident response</option>
         </select>
       </label>
-      <label class="upload">Import config <input id="file" type="file" accept=".yaml,.yml,.json,.txt,.json-example,.txt-example"></label>
+      <label class="upload">Import config <input id="file" type="file" accept=".yaml,.yml,.json,.txt,.csproj,.config,.json-example,.txt-example"></label>
       <button id="edit" type="button">Paste config</button>
       <label>Audience
         <select id="audience">
@@ -70,7 +70,7 @@
       <aside id="details" aria-label="Component details" aria-live="polite"></aside>
     </section>
     <section class="monitor">
-      <div><h2>Live intelligence</h2><p>Opt in to send package names, versions, and configured repository names to npm, OSV, and GitHub. No credentials are needed or stored.</p></div>
+      <div><h2>Live intelligence</h2><p>Opt in to send package names, versions, and configured repository names to npm, NuGet.org, OSV, and GitHub. No credentials are needed or stored.</p></div>
       <label><input id="live" type="checkbox"> Poll every 60 seconds</label>
       <button id="refresh">Refresh once</button>
       <button id="export">Export JSON</button>
@@ -82,7 +82,7 @@
   <dialog id="editor">
     <form id="config-form">
       <h2>Load dependency configuration</h2>
-      <label>Format <select id="format"><option value="glow.config.yaml">Glow YAML</option><option value="package.json">package.json</option><option value="requirements.txt">requirements.txt</option></select></label>
+      <label>Format <select id="format"><option value="glow.config.yaml">Glow YAML</option><option value="package.json">package.json</option><option value="requirements.txt">requirements.txt</option><option value="project.csproj">C# project (.csproj)</option><option value="packages.config">packages.config</option></select></label>
       <label>Configuration<textarea id="config" rows="15" spellcheck="false" required maxlength="1000000"></textarea></label>
       <p id="editor-error" role="alert"></p>
       <button type="submit">Visualize</button><button id="cancel" type="button">Cancel</button>
