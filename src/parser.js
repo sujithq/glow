@@ -146,13 +146,13 @@ function projectVersion(value) {
 
 export function parseNugetManifest(source, filename) {
   // Comments and CDATA contain literal text, not declarations or entity references.
-  const markup = source.replace(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>/g, '');
-  if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(markup) || /<\?(?!xml(?:\s|\?>))/i.test(markup)) {
+  const segments = source.split(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>/g);
+  if (segments.some(segment => /<!\s*(?:DOCTYPE|ENTITY)\b/i.test(segment) || /<\?(?!xml(?:\s|\?>))/i.test(segment))) {
     throw new Error('XML DOCTYPE, ENTITY, and processing instructions are not supported.');
   }
   const valid = XMLValidator.validate(source);
   if (valid !== true) throw new Error(`Invalid XML manifest: ${valid.err.msg}`);
-  if (/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/.test(markup)) {
+  if (segments.some(segment => /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/.test(segment))) {
     throw new Error('Unsupported XML entity reference.');
   }
   const parser = new XMLParser({
