@@ -1,0 +1,34 @@
+# Illustrative mixed-status fixture. Findings are configured, not live scan results.
+project: Commerce platform
+dependencies:
+  - name: react
+    version: 18.2.0
+    status: healthy
+    type: frontend
+    license: MIT
+  - name: express
+    version: 4.18.0
+    status: warning
+    type: backend
+    dependencies: [lodash]
+    vulnerabilities:
+      - id: GHSA-rv95-896h-c2vc
+        summary: Illustrative advisory; refresh OSV to query this exact version.
+        severity: moderate
+  - name: lodash
+    version: 4.17.20
+    status: critical
+    type: utility
+    vulnerabilities: 2
+  - name: requests
+    ecosystem: PyPI
+    version: 2.31.0
+    status: healthy
+    type: worker
+services:
+  - name: storefront
+    status: running
+    dependencies: [react, checkout-api]
+  - name: checkout-api
+    status: warning
+    dependencies: [express, requests]

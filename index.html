@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09101b">
+  <meta name="description" content="Glow: interactive isometric dependency health, security, and impact dashboard.">
+  <title>Glow · Dependency intelligence</title>
+  <link rel="stylesheet" href="./assets/visualizer.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="./"><span aria-hidden="true">◈</span> GLOW</a>
+    <span class="subtitle">Dependency intelligence / isometric edition</span>
+    <a href="./downloads/glow.tar.gz" download>Download Claude skill ↗</a>
+    <a href="https://github.com/sujithq/glow">Source ↗</a>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">EVERY CONNECTION TELLS A STORY</p>
+      <h1>See your stack.<br><span>Know its impact.</span></h1>
+      <p>Explore dependencies, spot security risks, and trace the services that depend on them.</p>
+    </section>
+    <section class="toolbar" aria-label="Dashboard controls">
+      <label>Scenario
+        <select id="scenario">
+          <option value="glow.config.yaml">Mixed / commerce platform</option>
+          <option value="healthy.config.yaml">Healthy / starter stack</option>
+          <option value="vulnerable.config.yaml">Vulnerable / incident response</option>
+        </select>
+      </label>
+      <label class="upload">Import config <input id="file" type="file" accept=".yaml,.yml,.json,.txt,.json-example,.txt-example"></label>
+      <button id="edit" type="button">Paste config</button>
+      <label>Audience
+        <select id="audience">
+          <option value="developer">Developer</option><option value="devops">DevOps</option>
+          <option value="architect">Architect</option><option value="security">Security</option>
+        </select>
+      </label>
+    </section>
+    <div id="message" role="status" aria-live="polite">Loading demo…</div>
+    <section class="stats" aria-label="Dependency summary">
+      <div><strong id="count">0</strong><span>Components</span></div>
+      <div><strong id="healthy">0</strong><span>Healthy status</span></div>
+      <div><strong id="warning">0</strong><span>Warnings</span></div>
+      <div><strong id="critical">0</strong><span>Critical</span></div>
+      <div><strong id="findings">0</strong><span>Reported findings</span></div>
+    </section>
+    <section class="workspace">
+      <div class="canvas-panel">
+        <div class="canvas-header">
+          <div><p class="eyebrow">DEPENDENCY MAP</p><h2 id="project">Project</h2></div>
+          <div class="views" role="group" aria-label="Graph view">
+            <button data-view="health" aria-pressed="true">Health</button>
+            <button data-view="security" aria-pressed="false">Security</button>
+            <button data-view="dependency" aria-pressed="false">Dependency</button>
+          </div>
+        </div>
+        <div class="graph-controls">
+          <label>Layer <select id="layer"><option value="all">All components</option><option value="package">Packages</option><option value="service">Services</option></select></label>
+          <label>Find <input id="search" type="search" placeholder="Component name" maxlength="200"></label>
+          <button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button>
+          <button id="reset">Reset view</button>
+        </div>
+        <div class="graph-container">
+          <svg id="graph" role="group" aria-label="Interactive isometric dependency graph"></svg>
+        </div>
+        <div class="legend"><span class="dot healthy"></span>Healthy <span class="dot warning"></span>Warning / unverified <span class="dot critical"></span>Critical <span>Click a block · hover a connection · tab to explore</span></div>
+      </div>
+      <aside id="details" aria-label="Component details" aria-live="polite"></aside>
+    </section>
+    <section class="monitor">
+      <div><h2>Live intelligence</h2><p>Opt in to send package names, versions, and configured repository names to npm, OSV, and GitHub. No credentials are needed or stored.</p></div>
+      <label><input id="live" type="checkbox"> Poll every 60 seconds</label>
+      <button id="refresh">Refresh once</button>
+      <button id="export">Export JSON</button>
+      <p id="updated">Demo data · not a live security assessment</p>
+    </section>
+    <p class="notice">Security scans require exact versions. Manifests do not contain transitive dependency trees: add explicit relationships in YAML. “Healthy” is a configured health status, not proof of security.</p>
+  </main>
+  <footer>Built for developers, DevOps, architects &amp; security teams. <a href="https://iso-glow.vercel.app/">iso-glow skill ↗</a> · <a href="https://github.com/sujithq/glow#readme">Documentation ↗</a></footer>
+  <dialog id="editor">
+    <form id="config-form">
+      <h2>Load dependency configuration</h2>
+      <label>Format <select id="format"><option value="glow.config.yaml">Glow YAML</option><option value="package.json">package.json</option><option value="requirements.txt">requirements.txt</option></select></label>
+      <label>Configuration<textarea id="config" rows="15" spellcheck="false" required maxlength="1000000"></textarea></label>
+      <p id="editor-error" role="alert"></p>
+      <button type="submit">Visualize</button><button id="cancel" type="button">Cancel</button>
+    </form>
+  </dialog>
+  <script type="module" src="./assets/visualizer.js"></script>
+</body>
+</html>

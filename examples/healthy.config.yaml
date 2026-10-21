@@ -1,0 +1,16 @@
+project: Healthy starter stack (illustrative)
+dependencies:
+  - name: web-components
+    version: 1.0.0
+    license: MIT
+    status: healthy
+  - name: shared-utils
+    version: 1.0.0
+    status: healthy
+services:
+  - name: web-app
+    status: running
+    dependencies: [web-components, api]
+  - name: api
+    status: running
+    dependencies: [shared-utils]
