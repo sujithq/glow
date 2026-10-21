@@ -15,6 +15,14 @@ async function json(url, options, fetcher, signal) {
 
 export async function enrichNode(original, { fetcher = fetch, signal } = {}) {
   const node = structuredClone(original);
+  const baseline = node.configuredEvidence ?? {
+    status: node.status, advisories: node.advisories, vulnerabilityCount: node.vulnerabilityCount,
+    deprecated: node.deprecated, license: node.license, description: node.description,
+  };
+  node.configuredEvidence = structuredClone(baseline);
+  Object.assign(node, structuredClone(baseline));
+  for (const field of ['latest', 'updateAvailable', 'githubStatus', 'checkedAt']) delete node[field];
+  node.scan = 'not checked';
   node.errors = [];
   if (node.kind === 'package') {
     if (node.ecosystem === 'npm') {

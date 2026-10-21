@@ -4,7 +4,7 @@
 
 Use **Import config** for `.yaml`, `.yml`, `.json`, or `.txt`, or **Paste config** to choose a format and paste text. Imports are limited to 1 MB and 300 components. Invalid configurations show an error without replacing the current graph. Choosing a new valid configuration disables live polling.
 
-`package.json` merges dependencies, devDependencies, peerDependencies, and optionalDependencies. Duplicate names use the first occurrence in that order. Version ranges are retained, not resolved. No dependency relationships are invented.
+`package.json` merges dependencies, devDependencies, peerDependencies, and optionalDependencies. Duplicate names use the first occurrence in that order, except optionalDependencies override other entries, matching npm's regular/optional precedence. Version ranges are retained, not resolved. No dependency relationships are invented.
 
 `requirements.txt` supports names, extras, exact `==` pins, and simple version specifiers. Names are normalized according to Python package naming conventions. Includes, URLs, editable installs, hashes, line continuations, and environment markers are deliberately rejected. Use YAML for these cases with independently verified resolved package names/versions.
 

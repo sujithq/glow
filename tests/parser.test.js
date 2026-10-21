@@ -15,6 +15,15 @@ test('package manifests preserve version ranges and deduplicate groups', () => {
   assert.equal(graph.nodes.length, 2);
   assert.equal(graph.nodes[0].version, '^18.0.0');
 });
+test('npm optional dependencies override regular dependencies', () => {
+  const graph = parseInput(JSON.stringify({
+    dependencies: { foo: '1.0.0' },
+    optionalDependencies: { foo: '2.0.0' },
+  }), 'package.json');
+  assert.equal(graph.nodes.length, 1);
+  assert.equal(graph.nodes[0].version, '2.0.0');
+  assert.equal(graph.nodes[0].type, 'optionalDependencies');
+});
 test('requirements pins, extras, normalized names, and ranges', () => {
   const graph = parseInput('My_Package[extra]==1.2.3 # pin\nFlask>=2.0,<4.0\nrequests', 'requirements.txt');
   assert.deepEqual(graph.nodes.map(node => [node.name, node.version]), [

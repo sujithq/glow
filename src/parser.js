@@ -67,7 +67,7 @@ export function parsePackageJson(data) {
     if (!values || typeof values !== 'object' || Array.isArray(values)) throw new Error(`Invalid ${group}.`);
     for (const [name, version] of Object.entries(values)) {
       if (typeof version !== 'string') throw new Error(`Invalid version for ${name}.`);
-      if (!packages.has(name)) packages.set(name, { name, version, type: group });
+      if (!packages.has(name) || group === 'optionalDependencies') packages.set(name, { name, version, type: group });
     }
   }
   return normalizeConfig({ project: data.name, dependencies: [...packages.values()] });

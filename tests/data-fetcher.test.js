@@ -70,3 +70,26 @@ test('aborted refresh does not continue processing a queue', async () => {
   controller.abort();
   await assert.rejects(refreshGraph({ nodes: [node()], edges: [] }, { signal: controller.signal }), { name: 'AbortError' });
 });
+test('repeated API refresh replaces live findings but retains configured evidence', async () => {
+  const configured = node({ vulnerabilities: [{ id: 'configured' }] });
+  const first = await enrichNode(configured, { fetcher: async url => response(url.includes('osv')
+    ? { vulns: [{ id: 'live' }] } : { version: '2.0.0', deprecated: 'obsolete' }) });
+  assert.equal(first.vulnerabilityCount, 2);
+  assert.equal(first.deprecated, true);
+  const second = await enrichNode(first, { fetcher: async () => response({}) });
+  assert.deepEqual(second.advisories.map(item => item.id), ['configured']);
+  assert.equal(second.vulnerabilityCount, 1);
+  assert.equal(second.deprecated, false);
+  assert.equal(first.advisories.length, 2);
+  const cleanFirst = await enrichNode(node(), { fetcher: async () => response({ vulns: [{ id: 'live' }] }) });
+  const cleanSecond = await enrichNode(cleanFirst, { fetcher: async () => response({}) });
+  assert.equal(cleanSecond.scan, 'clean');
+  assert.equal(cleanSecond.vulnerabilityCount, 0);
+});
+test('repeated API refresh resets live GitHub failure on recovery', async () => {
+  const service = normalizeConfig({ services: [{ name: 'api', repository: 'owner/repo' }] }).nodes[0];
+  const failed = await enrichNode(service, { fetcher: async () => response({ total_count: 1, state: 'failure' }) });
+  const recovered = await enrichNode(failed, { fetcher: async () => response({ total_count: 1, state: 'success' }) });
+  assert.equal(recovered.status, 'healthy');
+  assert.equal(recovered.githubStatus, 'success');
+});
