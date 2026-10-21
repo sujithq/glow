@@ -28,7 +28,7 @@ function details() {
   const rows = [
     ['Version', node.version || 'Not specified'], ['Health', health(node)],
     ['License', node.license], ['Security scan', node.scan],
-    ['Latest npm tag', node.latest || 'Not checked'],
+    [node.ecosystem === 'NuGet' ? 'Latest stable NuGet version' : 'Latest registry version', node.latest || 'Not checked'],
     ['Version differs from latest', node.updateAvailable ? 'Yes — review compatibility' : 'Not established'],
     ['Deprecated', node.deprecated ? 'Yes (configured or latest release)' : 'Not reported'],
     ['GitHub status', node.githubStatus || 'Not checked'],
@@ -37,6 +37,8 @@ function details() {
   const dl = element('dl');
   for (const [key, value] of rows) dl.append(element('dt', key), element('dd', value));
   panel.append(dl, element('h3', `Reported vulnerabilities (${node.vulnerabilityCount})`));
+  if (node.ecosystem === 'NuGet') panel.append(element('p',
+    'NuGet OSV matching is case-sensitive. Queries use the imported package spelling; empty results have limited coverage and do not clear security status.'));
   if (!node.advisories.length) panel.append(element('p', node.vulnerabilityCount
     ? 'Configuration supplies a count only. Check your security source for advisory details.'
     : 'No findings reported. Unchecked or unresolved packages are not security-cleared.'));
@@ -122,14 +124,14 @@ async function refresh() {
   controller = new AbortController();
   const current = generation;
   $('refresh').disabled = true;
-  message('Checking npm, OSV, and configured GitHub repositories…');
+  message('Checking npm, NuGet, OSV, and configured GitHub repositories…');
   try {
     const result = await refreshGraph(base, { signal: controller.signal });
     if (current !== generation) return;
     graph = result;
     const errors = graph.nodes.reduce((sum, node) => sum + node.errors.length, 0);
     const unchecked = graph.nodes.filter(node => node.kind === 'package' && !['clean', 'findings'].includes(node.scan)).length;
-    $('updated').textContent = `Last refresh: ${new Date(graph.refreshedAt).toLocaleTimeString()} · ${errors} API errors · ${unchecked} unscanned packages`;
+    $('updated').textContent = `Last refresh: ${new Date(graph.refreshedAt).toLocaleTimeString()} · ${errors} API errors · ${unchecked} packages with unresolved or limited scans`;
     message('Refresh complete. Inspect each component for findings, unverified versions, and API errors.');
     draw();
   } catch (error) { if (current === generation) message(`Refresh failed: ${error.message}`); }

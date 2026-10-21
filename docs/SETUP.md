@@ -55,9 +55,12 @@ The bundled app loads its examples and code from the hosting origin. There are n
 | Destination | Data sent |
 | --- | --- |
 | `registry.npmjs.org` | npm package name |
+| `api.nuget.org` | lowercase NuGet package ID, for the public version index |
 | `api.osv.dev` | package name, ecosystem, exact version |
 | `api.github.com` | configured public repository name |
 
 Browsers also reveal ordinary network metadata to the hosting origin and API providers. Do not enable live mode for confidential dependencies without approval. No proxy/backend, credentials, private-repository support, or persistent server monitoring is included. For offline use, serve the packaged files locally and leave refresh disabled.
+
+NuGet metadata uses the anonymous [package version index](https://learn.microsoft.com/en-us/nuget/api/package-base-address-resource). Its response was checked for browser CORS (`Access-Control-Allow-Origin: *`). Only public NuGet.org is contacted; configured/custom feeds are never followed. The bundled `fast-xml-parser` validates .NET XML inputs without executing MSBuild or loading external resources.
 
 API outages, rate limits, and browser CORS failures are displayed per component. GitHub's unauthenticated rate limits can be exhausted quickly by repeated polling. Disable polling or use one-shot refresh; do not paste tokens into configurations.
