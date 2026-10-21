@@ -1,0 +1,26 @@
+{
+  "name": "glow",
+  "version": "1.0.0",
+  "description": "Interactive isometric dependency dashboard and Claude skill",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "build": "node build.js",
+    "dev": "node build.js --serve",
+    "package:skill": "npm run build && mkdir -p dist/downloads && tar -czf dist/downloads/glow.tar.gz -C dist/skill glow"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sujithq/glow"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

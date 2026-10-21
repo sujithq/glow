@@ -1,0 +1,19 @@
+project: Incident response (illustrative)
+dependencies:
+  - name: lodash
+    version: 4.17.20
+    status: critical
+    vulnerabilities: 2
+  - name: legacy-auth
+    version: 0.9.0
+    status: critical
+    deprecated: true
+    dependencies: [lodash]
+    vulnerabilities: 3
+services:
+  - name: identity-api
+    status: warning
+    dependencies: [legacy-auth]
+  - name: customer-portal
+    status: warning
+    dependencies: [identity-api]
