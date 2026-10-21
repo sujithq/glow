@@ -145,14 +145,16 @@ function projectVersion(value) {
 }
 
 export function parseNugetManifest(source, filename) {
-  if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(source) || /<\?(?!xml(?:\s|\?>))/i.test(source)) {
+  // Comments and CDATA contain literal text, not declarations or entity references.
+  const markup = source.replace(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>/g, '');
+  if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(markup) || /<\?(?!xml(?:\s|\?>))/i.test(markup)) {
     throw new Error('XML DOCTYPE, ENTITY, and processing instructions are not supported.');
-  }
-  if (/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/.test(source)) {
-    throw new Error('Unsupported XML entity reference.');
   }
   const valid = XMLValidator.validate(source);
   if (valid !== true) throw new Error(`Invalid XML manifest: ${valid.err.msg}`);
+  if (/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/.test(markup)) {
+    throw new Error('Unsupported XML entity reference.');
+  }
   const parser = new XMLParser({
     ignoreAttributes: false, parseTagValue: false, parseAttributeValue: false,
     preserveOrder: true, trimValues: false, htmlEntities: true,

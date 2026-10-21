@@ -294,6 +294,31 @@ test('XML entities, DTDs, and external processing instructions cannot be evaluat
   assert.equal(graph.nodes[0].version, '>=1.0');
 });
 
+test('XML comments and CDATA permit literal ampersands and inert declaration-looking text', () => {
+  const literal = 'runtime & logging &unknown; <!DOCTYPE Project SYSTEM "https://example.com/evil.dtd"> <!ENTITY secret SYSTEM "file:///etc/passwd"> <?external target="anything"?>';
+  for (const content of [
+    '<!-- runtime & logging -->',
+    `<PropertyGroup><Description><![CDATA[A & B]]></Description></PropertyGroup>`,
+    `<!-- ${literal} -->`,
+    `<PropertyGroup><Description><![CDATA[${literal}]]></Description></PropertyGroup>`,
+  ]) {
+    const graph = parseInput(csproj(`${content}<ItemGroup><PackageReference Include="A" Version="[1.0]" /></ItemGroup>`), 'sample.csproj');
+    assert.deepEqual(graph.nodes.map(node => [node.name, node.version]), [['a', '1.0']]);
+  }
+  const graph = parseInput(`<packages><!-- ${literal} --><package id="A" version="1.0" /></packages>`, 'packages.config');
+  assert.equal(graph.nodes[0].version, '1.0');
+  for (const source of [
+    `<!-- harmless & text --><?external target="anything"?>${references('<PackageReference Include="A" Version="[1]" />')}`,
+    `<!-- harmless & text --><!DOCTYPE Project SYSTEM "https://example.com/evil.dtd"><Project/>`,
+    csproj('<PropertyGroup><Description><![CDATA[A & B]]>&unknown;</Description></PropertyGroup>'),
+    csproj('<PropertyGroup><Description><![CDATA[A & B]]></Description></PropertyGroup><ItemGroup><PackageReference Include="A" Version="&unknown;" /></ItemGroup>'),
+  ]) assert.throws(() => parseInput(source, 'sample.csproj'), /DOCTYPE|processing instructions|entity reference/);
+  for (const source of [
+    '<Project><!-- unfinished & text</Project>',
+    '<Project><PropertyGroup><Description><![CDATA[unfinished & text</Description></PropertyGroup></Project>',
+  ]) assert.throws(() => parseInput(source, 'sample.csproj'), /Invalid XML/);
+});
+
 test('conditional packages, groups, properties, versions, and overrides are rejected rather than scanned as exact', () => {
   for (const source of [
     '<Project Condition="true"><ItemGroup><PackageReference Include="A" Version="1" /></ItemGroup></Project>',
