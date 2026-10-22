@@ -23,6 +23,8 @@ public sealed class ToolApplicationTests
         var input = await fixture.SolutionAsync(["App"]);
         var output = Path.Combine(fixture.Root, "config [test].yaml");
         using var console = new TestConsole();
+        // Keep the filename assertion independent of wrapping on long temporary paths.
+        console.Profile.Width = output.Length + 100;
         Assert.Equal(0, await ToolApplication.Create(console).RunAsync(["convert", input, "-o", output]));
         var yaml = await File.ReadAllTextAsync(output);
         Assert.Contains("project:App/App.csproj", yaml);

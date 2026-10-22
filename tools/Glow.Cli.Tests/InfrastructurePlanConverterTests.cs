@@ -189,6 +189,130 @@ public sealed class InfrastructurePlanConverterTests
     }
 
     [Fact]
+    public async Task SymbolicNameTemplatesFlattenModulesAndExpandCopyLoopsFromWhatIf()
+    {
+        using var fixture = new InfrastructureFixture();
+        var template = await fixture.WriteAsync("main.json", """
+            {
+              "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+              "languageVersion": "2.0",
+              "resources": {
+                "rg": {
+                  "type": "Microsoft.Resources/resourceGroups",
+                  "apiVersion": "2024-03-01",
+                  "name": "[parameters('resourceGroupName')]"
+                },
+                "durable": {
+                  "type": "Microsoft.Resources/deployments",
+                  "apiVersion": "2025-04-01",
+                  "name": "durable-task-scheduler",
+                  "properties": {
+                    "template": {
+                      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                      "languageVersion": "2.0",
+                      "resources": {
+                        "scheduler": {
+                          "type": "Microsoft.DurableTask/schedulers",
+                          "apiVersion": "2026-02-01",
+                          "name": "[parameters('schedulerName')]"
+                        },
+                        "taskHubs": {
+                          "copy": { "name": "taskHubs", "count": "[length(parameters('taskHubNames'))]" },
+                          "type": "Microsoft.DurableTask/schedulers/taskHubs",
+                          "apiVersion": "2026-02-01",
+                          "name": "[format('{0}/{1}', parameters('schedulerName'), parameters('taskHubNames')[copyIndex()])]",
+                          "dependsOn": ["scheduler"]
+                        },
+                        "lookup": {
+                          "existing": true,
+                          "type": "Microsoft.KeyVault/vaults",
+                          "apiVersion": "2023-07-01",
+                          "name": "shared"
+                        }
+                      }
+                    }
+                  },
+                  "dependsOn": ["rg"]
+                }
+              }
+            }
+            """);
+        var whatIf = await fixture.WriteAsync("what-if.json", """
+            {
+              "changes": [
+                { "resourceId": "/subscriptions/0000/resourceGroups/rg-durable", "changeType": "NoChange" },
+                { "resourceId": "/subscriptions/0000/resourceGroups/rg-durable/providers/Microsoft.DurableTask/schedulers/my-scheduler", "changeType": "Create" },
+                { "resourceId": "/subscriptions/0000/resourceGroups/rg-durable/providers/Microsoft.DurableTask/schedulers/my-scheduler/taskHubs/hub-a", "changeType": "Create" },
+                { "resourceId": "/subscriptions/0000/resourceGroups/rg-durable/providers/Microsoft.DurableTask/schedulers/my-scheduler/taskHubs/hub-b", "changeType": "Modify" }
+              ]
+            }
+            """);
+
+        var configuration = await _converter.ConvertAsync(template, new(WhatIfPath: whatIf));
+
+        Assert.Equal(
+            [
+                "Microsoft.DurableTask/schedulers/my-scheduler",
+                "Microsoft.DurableTask/schedulers/taskHubs/my-scheduler/hub-a",
+                "Microsoft.DurableTask/schedulers/taskHubs/my-scheduler/hub-b",
+                "Microsoft.Resources/resourceGroups/rg-durable",
+            ],
+            configuration.Services.Select(node => node.Name).Order(StringComparer.Ordinal));
+        var group = Assert.Single(configuration.Services, node => node.Name == "Microsoft.Resources/resourceGroups/rg-durable");
+        Assert.Equal("no-change", group.PlanChange);
+        Assert.Empty(group.Dependencies);
+        var scheduler = Assert.Single(configuration.Services, node => node.Name == "Microsoft.DurableTask/schedulers/my-scheduler");
+        Assert.Equal("create", scheduler.PlanChange);
+        Assert.Equal([group.Name], scheduler.Dependencies);
+        var hubA = Assert.Single(configuration.Services, node => node.Name.EndsWith("/hub-a", StringComparison.Ordinal));
+        var hubB = Assert.Single(configuration.Services, node => node.Name.EndsWith("/hub-b", StringComparison.Ordinal));
+        Assert.Equal("create", hubA.PlanChange);
+        Assert.Equal("update", hubB.PlanChange);
+        Assert.Equal([scheduler.Name], hubA.Dependencies);
+        Assert.Equal([scheduler.Name], hubB.Dependencies);
+        Assert.DoesNotContain(configuration.Services, node => node.Name.Contains('[', StringComparison.Ordinal));
+        GlowYamlWriter.Serialize(configuration);
+    }
+
+    [Fact]
+    public async Task SymbolicDependenciesOnCopyLoopsReachEveryInstance()
+    {
+        using var fixture = new InfrastructureFixture();
+        var template = await fixture.WriteAsync("main.json", """
+            {
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "languageVersion": "2.0",
+              "resources": {
+                "accounts": {
+                  "copy": { "name": "accounts", "count": 2 },
+                  "type": "Microsoft.Storage/storageAccounts",
+                  "name": "[format('data{0}', copyIndex())]"
+                },
+                "app": {
+                  "type": "Microsoft.Web/sites",
+                  "name": "api",
+                  "dependsOn": ["accounts"]
+                }
+              }
+            }
+            """);
+        var whatIf = await fixture.WriteAsync("what-if.json", """
+            [
+              { "resourceId": "/subscriptions/0/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/data0", "changeType": "Create" },
+              { "resourceId": "/subscriptions/0/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/data1", "changeType": "Create" },
+              { "resourceId": "/subscriptions/0/resourceGroups/demo/providers/Microsoft.Web/sites/api", "changeType": "Create" }
+            ]
+            """);
+
+        var configuration = await _converter.ConvertAsync(template, new(WhatIfPath: whatIf));
+
+        var app = Assert.Single(configuration.Services, node => node.Name == "Microsoft.Web/sites/api");
+        Assert.Equal(
+            ["Microsoft.Storage/storageAccounts/data0", "Microsoft.Storage/storageAccounts/data1"],
+            app.Dependencies);
+    }
+
+    [Fact]
     public async Task OptionalIconMapEmbedsSanitizedLocalIconsForTheBrowser()
     {
         using var fixture = new InfrastructureFixture();

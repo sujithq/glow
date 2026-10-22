@@ -12,6 +12,7 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
     private const int MaximumIconBytes = 100_000;
     private const int MaximumIconMapBytes = 100_000;
     private const int MaximumSvgCharacters = 100_000;
+    private const int MaximumNestedDeploymentDepth = 10;
     private static readonly IReadOnlyDictionary<string, string> AzureTerraformTypes =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -70,7 +71,8 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
             return await ConvertTerraformAsync(root, Path.GetFileNameWithoutExtension(inputPath), icons, cancellationToken);
         }
 
-        if (TryProperty(root, "resources", out var resources) && resources.ValueKind == JsonValueKind.Array
+        if (TryProperty(root, "resources", out var resources)
+            && resources.ValueKind is JsonValueKind.Array or JsonValueKind.Object
             && TryProperty(root, "$schema", out _))
         {
             return await ConvertArmTemplateAsync(
@@ -247,7 +249,7 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
         IReadOnlyDictionary<string, string> icons, CancellationToken cancellationToken)
     {
         var resources = new List<ResourceRecord>();
-        CollectArmResources(rootResources, resources);
+        CollectArmTemplate(rootResources, resources, depth: 0);
         if (resources.Count == 0 && whatIfPath is null)
         {
             throw new ConversionException("ARM template contains no resources.");
@@ -271,36 +273,102 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
         return new GlowConfiguration(project, [], resources.Select(ToComponent).ToArray());
     }
 
-    private static void CollectArmResources(JsonElement elements, ICollection<ResourceRecord> resources)
+    // Supports classic resource arrays and languageVersion 2.0 symbolic-name objects. Inline nested
+    // deployments (Bicep modules) are flattened into their deployed resources.
+    private static List<ResourceRecord> CollectArmTemplate(JsonElement templateResources, List<ResourceRecord> all, int depth)
     {
-        foreach (var element in elements.EnumerateArray())
+        if (depth > MaximumNestedDeploymentDepth)
         {
-            var type = RequiredText(element, "type", "ARM resource");
-            var name = RequiredText(element, "name", type);
+            throw new ConversionException($"ARM template nests resources more than {MaximumNestedDeploymentDepth} levels deep.");
+        }
+        var symbols = new Dictionary<string, List<ResourceRecord>>(StringComparer.OrdinalIgnoreCase);
+        var pending = new List<(List<ResourceRecord> Records, List<string> Dependencies, bool IsDeployment)>();
+        var collected = new List<ResourceRecord>();
+        foreach (var (symbol, element) in EnumerateArmResources(templateResources))
+        {
+            if (Property(element, "existing").ValueKind == JsonValueKind.True)
+            {
+                continue;
+            }
+            var type = RequiredText(element, "type", symbol is null ? "ARM resource" : $"ARM resource '{symbol}'");
             var versionSeparator = type.IndexOf('@');
             if (versionSeparator >= 0)
             {
                 type = type[..versionSeparator];
             }
-            var record = new ResourceRecord
+            var dependencies = StringArray(Property(element, "dependsOn"), $"{symbol ?? type}.dependsOn");
+            var innerResources = Property(Property(Property(element, "properties"), "template"), "resources");
+            List<ResourceRecord> records;
+            var isDeployment = type.Equals("Microsoft.Resources/deployments", StringComparison.OrdinalIgnoreCase)
+                && innerResources.ValueKind is JsonValueKind.Array or JsonValueKind.Object;
+            if (isDeployment)
             {
-                Name = $"{type}/{name}",
-                Address = $"{type}/{name}",
-                Type = type,
-                ResourceType = type,
-                Description = $"Azure resource · {type}",
-                PlanChange = "unknown",
-                RawName = name,
-                RawDependencies = StringArray(Property(element, "dependsOn"), $"{type}/{name}.dependsOn"),
-            };
-            resources.Add(record);
-            var nested = Property(element, "resources");
-            if (nested.ValueKind == JsonValueKind.Array)
+                records = CollectArmTemplate(innerResources, all, depth + 1);
+            }
+            else
             {
-                CollectArmResources(nested, resources);
+                var name = RequiredText(element, "name", type);
+                var record = new ResourceRecord
+                {
+                    Name = $"{type}/{name}",
+                    Address = $"{type}/{name}",
+                    Type = type,
+                    ResourceType = type,
+                    Description = $"Azure resource · {type}",
+                    PlanChange = "unknown",
+                    RawName = name,
+                    IsCopy = Property(element, "copy").ValueKind == JsonValueKind.Object,
+                };
+                all.Add(record);
+                records = [record];
+                var nested = Property(element, "resources");
+                if (nested.ValueKind == JsonValueKind.Array)
+                {
+                    collected.AddRange(CollectArmTemplate(nested, all, depth + 1));
+                }
+            }
+            collected.AddRange(records);
+            if (symbol is not null)
+            {
+                symbols[symbol] = records;
+            }
+            pending.Add((records, dependencies, isDeployment));
+        }
+
+        foreach (var (records, dependencies, isDeployment) in pending)
+        {
+            // A module's dependencies apply to its entry resources, not to every resource inside it.
+            var dependents = isDeployment
+                ? records.Where(record => !record.DependencyRecords.Any(records.Contains)).ToList()
+                : records;
+            foreach (var dependency in dependencies)
+            {
+                if (symbols.TryGetValue(dependency, out var targets))
+                {
+                    foreach (var source in dependents)
+                    {
+                        source.DependencyRecords.UnionWith(targets.Where(target => !ReferenceEquals(source, target)));
+                    }
+                }
+                else
+                {
+                    foreach (var source in dependents)
+                    {
+                        source.RawDependencies.Add(dependency);
+                    }
+                }
             }
         }
+        return collected;
     }
+
+    private static IEnumerable<(string? Symbol, JsonElement Element)> EnumerateArmResources(JsonElement resources) =>
+        resources.ValueKind switch
+        {
+            JsonValueKind.Array => resources.EnumerateArray().Select(element => ((string?)null, element)),
+            JsonValueKind.Object => resources.EnumerateObject().Select(property => ((string?)property.Name, property.Value)),
+            _ => throw new ConversionException("ARM template resources must be an array or a symbolic-name object."),
+        };
 
     private static void AddArmDependencies(IReadOnlyCollection<ResourceRecord> resources)
     {
@@ -312,10 +380,7 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
                         && dependency.Contains(candidate.Type, StringComparison.OrdinalIgnoreCase)
                         && dependency.Contains(NormalizeArmExpression(candidate.RawName), StringComparison.OrdinalIgnoreCase))
                     .ToArray();
-                foreach (var target in matches)
-                {
-                    source.Dependencies.Add(target.Name);
-                }
+                source.DependencyRecords.UnionWith(matches);
             }
         }
     }
@@ -332,12 +397,13 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
             throw new ConversionException("Azure what-if input must contain a changes array (or be an array itself).");
         }
 
+        var matched = new List<(ResourceRecord Resource, JsonElement Change, string ResourceId)>();
         foreach (var change in changes.EnumerateArray())
         {
             var resourceId = RequiredText(change, "resourceId", "Azure what-if result");
             var changeType = RequiredText(change, "changeType", resourceId);
             var identity = ParseResourceId(resourceId);
-            var resource = FindArmResource(resources, identity.Type, identity.Name);
+            var resource = FindArmResource(resources, identity.Type, identity.Name, resourceId);
             if (resource is null)
             {
                 resource = new ResourceRecord
@@ -349,27 +415,60 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
                     Description = $"Azure resource · {identity.Type}",
                     PlanChange = "unknown",
                     RawName = identity.Name,
+                    CopySource = resources.FirstOrDefault(candidate => candidate.IsCopy
+                        && candidate.Type.Equals(identity.Type, StringComparison.OrdinalIgnoreCase)),
                 };
+                if (resource.CopySource is { } copySource)
+                {
+                    resource.RawDependencies.AddRange(copySource.RawDependencies);
+                    resource.DependencyRecords.UnionWith(copySource.DependencyRecords);
+                }
                 resources.Add(resource);
             }
+            else
+            {
+                // Show the deployed name instead of the template expression.
+                resource.Name = $"{identity.Type}/{identity.Name}";
+            }
+            resource.MatchedResourceId = resourceId;
             resource.PlanChange = AzureAction(changeType);
+            matched.Add((resource, change, resourceId));
+        }
+
+        foreach (var (resource, change, resourceId) in matched)
+        {
             foreach (var dependencyId in StringArray(Property(change, "dependsOn"), $"{resourceId}.dependsOn"))
             {
                 var dependencyIdentity = ParseResourceId(dependencyId);
-                var target = FindArmResource(resources, dependencyIdentity.Type, dependencyIdentity.Name);
+                var target = resources.FirstOrDefault(candidate =>
+                        dependencyId.Equals(candidate.MatchedResourceId, StringComparison.OrdinalIgnoreCase))
+                    ?? FindArmResource(resources, dependencyIdentity.Type, dependencyIdentity.Name, dependencyId);
                 if (target is not null && !ReferenceEquals(target, resource))
                 {
-                    resource.Dependencies.Add(target.Name);
+                    resource.DependencyRecords.Add(target);
                 }
+            }
+        }
+
+        foreach (var resource in resources)
+        {
+            foreach (var copyTemplate in resource.DependencyRecords.Where(dependency => dependency.IsCopy).ToArray())
+            {
+                resource.DependencyRecords.UnionWith(resources.Where(candidate =>
+                    ReferenceEquals(candidate.CopySource, copyTemplate) && !ReferenceEquals(candidate, resource)));
             }
         }
     }
 
     private static ResourceRecord? FindArmResource(
-        IEnumerable<ResourceRecord> resources, string type, string name)
+        IEnumerable<ResourceRecord> resources, string type, string name, string resourceId)
     {
-        var typeMatches = resources.Where(resource => resource.Type.Equals(type, StringComparison.OrdinalIgnoreCase)).ToArray();
-        return typeMatches.FirstOrDefault(resource =>
+        var typeMatches = resources.Where(resource => resource.Type.Equals(type, StringComparison.OrdinalIgnoreCase)
+                && (resource.MatchedResourceId is null
+                    || resource.MatchedResourceId.Equals(resourceId, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        return typeMatches.FirstOrDefault(resource => resource.MatchedResourceId is not null)
+            ?? typeMatches.FirstOrDefault(resource =>
                 NormalizeArmExpression(resource.RawName).Equals(name, StringComparison.OrdinalIgnoreCase)
                 || resource.RawName.Equals(name, StringComparison.OrdinalIgnoreCase))
             ?? (typeMatches.Length == 1 ? typeMatches[0] : null);
@@ -379,6 +478,12 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
     {
         var segments = resourceId.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var providerIndex = Array.FindLastIndex(segments, segment => segment.Equals("providers", StringComparison.OrdinalIgnoreCase));
+        if (providerIndex < 0 && segments.Length == 4
+            && segments[0].Equals("subscriptions", StringComparison.OrdinalIgnoreCase)
+            && segments[2].Equals("resourceGroups", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Microsoft.Resources/resourceGroups", segments[3]);
+        }
         if (providerIndex < 0 || providerIndex + 2 >= segments.Length)
         {
             throw new ConversionException($"Invalid Azure resource ID in what-if input: {resourceId}.");
@@ -588,7 +693,11 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
         PlanChange = resource.PlanChange,
         ResourceType = resource.ResourceType,
         Icon = resource.Icon,
-        Dependencies = resource.Dependencies.Order(StringComparer.Ordinal).ToArray(),
+        Dependencies = resource.Dependencies
+            .Concat(resource.DependencyRecords.Select(dependency => dependency.Name))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray(),
     };
 
     private static List<string> StringArray(JsonElement element, string label)
@@ -657,7 +766,7 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
 
     private sealed class ResourceRecord
     {
-        public required string Name { get; init; }
+        public required string Name { get; set; }
         public required string Address { get; init; }
         public required string Type { get; init; }
         public string? ResourceType { get; init; }
@@ -666,6 +775,11 @@ public sealed partial class InfrastructurePlanConverter : IInputConverter
         public string RawName { get; init; } = "";
         public List<string> RawDependencies { get; init; } = [];
         public HashSet<string> Dependencies { get; } = new(StringComparer.Ordinal);
+        // Record references stay correct when what-if later replaces a template expression name.
+        public HashSet<ResourceRecord> DependencyRecords { get; } = new(ReferenceEqualityComparer.Instance);
+        public bool IsCopy { get; init; }
+        public ResourceRecord? CopySource { get; init; }
+        public string? MatchedResourceId { get; set; }
         public string? Icon { get; set; }
     }
 }
