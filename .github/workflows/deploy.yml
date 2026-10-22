@@ -23,6 +23,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --registry=https://packagefeedproxy.microsoft.io/npm/
+      - name: Check CLI version has a changelog entry
+        run: node scripts/cli-release.mjs
       - run: npm test
       - run: npm run package:skill
       - name: Configure Pages
@@ -63,7 +65,7 @@ jobs:
         shell: pwsh
         run: |
           $tools = Join-Path $env:RUNNER_TEMP 'glow-tools'
-          dotnet tool install Glow.Cli --tool-path $tools --source artifacts/packages --version 1.0.0 --framework net10.0 --configfile tools/NuGet.Config
+          dotnet tool install Glow.Cli --tool-path $tools --source artifacts/packages --framework net10.0 --configfile tools/NuGet.Config
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $tools 'glow') convert tools/Glow.slnx --target net10.0 --output artifacts/ci.config.yaml
           exit $LASTEXITCODE

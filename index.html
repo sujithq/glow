@@ -13,7 +13,7 @@
     <a class="brand" href="./"><span aria-hidden="true">◈</span> GLOW</a>
     <span class="subtitle">Dependency intelligence / isometric edition</span>
     <a href="#manual">User manual</a>
-    <a href="https://github.com/sujithq/glow/releases/tag/cli-v1.0.0">Download .NET tool ↗</a>
+    <a href="https://github.com/sujithq/glow/releases/latest">Download .NET tool ↗</a>
     <a href="./downloads/glow.tar.gz" download>Download Claude skill ↗</a>
     <a href="https://github.com/sujithq/glow">Source ↗</a>
   </header>
@@ -124,13 +124,15 @@ services:
       <details id="manual-cli">
         <summary>Install and use the optional .NET CLI</summary>
         <p>Use the CLI when you need resolved packages and project relationships from a .NET solution, or planned resource changes from Terraform/Bicep. Ordinary YAML and manifest imports do not need it. The CLI runs locally and needs no Node.js or Claude installation.</p>
-        <p>Install the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 SDK</a>, then download <code>Glow.Cli.1.0.0.nupkg</code> from the <a href="https://github.com/sujithq/glow/releases/tag/cli-v1.0.0">CLI v1.0.0 release</a>. The release includes <code>SHA256SUMS</code> for checking the download with <code>Get-FileHash</code>. This is a GitHub release package, not a package published to NuGet.org.</p>
+        <p>Install the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 SDK</a>, then download <code>Glow.Cli.&lt;version&gt;.nupkg</code> and <code>SHA256SUMS</code> from the <a href="https://github.com/sujithq/glow/releases/latest">latest CLI release</a> and check the download with <code>Get-FileHash</code>. This is a GitHub release package, not a package published to NuGet.org.</p>
         <p>For example, in PowerShell:</p>
         <pre><code id="manual-cli-install">New-Item -ItemType Directory -Path .\glow-release -Force
-Invoke-WebRequest https://github.com/sujithq/glow/releases/download/cli-v1.0.0/Glow.Cli.1.0.0.nupkg -OutFile .\glow-release\Glow.Cli.1.0.0.nupkg
-dotnet tool install --global Glow.Cli --source .\glow-release --version 1.0.0 --framework net10.0
-glow --help</code></pre>
-        <p>The package also supports .NET 11 with a matching runtime; .NET 10 is the stable installation choice. If <code>glow</code> is not found after installing, reopen the terminal and check that the .NET global tools directory is on your PATH. To upgrade an existing installation, use <code>dotnet tool update</code> with the same source, version, and framework options.</p>
+$release = Invoke-RestMethod https://api.github.com/repos/sujithq/glow/releases/latest
+$release.assets | ForEach-Object { Invoke-WebRequest $_.browser_download_url -OutFile ".\glow-release\$($_.name)" }
+Get-FileHash .\glow-release\Glow.Cli.*.nupkg -Algorithm SHA256; Get-Content .\glow-release\SHA256SUMS
+dotnet tool install --global Glow.Cli --source .\glow-release --framework net10.0
+glow --version</code></pre>
+        <p>The package also supports .NET 11 with a matching runtime; .NET 10 is the stable installation choice. If <code>glow</code> is not found after installing, reopen the terminal and check that the .NET global tools directory is on your PATH. To upgrade, download the new release into the same directory and run <code>dotnet tool update</code> with the same source and framework options.</p>
         <h3>Convert a trusted .NET solution</h3>
         <pre><code>dotnet restore "C:\src\App\App.slnx"
 glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"</code></pre>

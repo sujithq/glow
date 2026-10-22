@@ -16,6 +16,18 @@ public sealed class ToolApplicationTests
     }
 
     [Fact]
+    public async Task ReportsThePackageVersion()
+    {
+        var project = System.Xml.Linq.XDocument.Load(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "Glow.Cli", "Glow.Cli.csproj"));
+        var expected = project.Descendants("Version").Single().Value.Trim();
+        using var console = new TestConsole();
+        Assert.Equal(0, await ToolApplication.Create(console).RunAsync(["--version"]));
+        Assert.Equal(expected, console.Output.Trim());
+        Assert.Equal(expected, ToolApplication.Version);
+    }
+
+    [Fact]
     public async Task CreatesYamlAndRefusesToOverwrite()
     {
         using var fixture = new SolutionFixture();

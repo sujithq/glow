@@ -1,3 +1,4 @@
+using System.Reflection;
 using Glow.Cli.Conversion;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
@@ -7,6 +8,11 @@ namespace Glow.Cli;
 
 public static class ToolApplication
 {
+    public static string Version { get; } =
+        (typeof(ToolApplication).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0")
+        .Split('+')[0];
+
     public static CommandApp Create(
         IAnsiConsole console, IEnumerable<IInputConverter>? converters = null, IAnsiConsole? errors = null)
     {
@@ -21,7 +27,7 @@ public static class ToolApplication
         app.Configure(configuration =>
         {
             configuration.SetApplicationName("glow");
-            configuration.SetApplicationVersion("1.0.0");
+            configuration.SetApplicationVersion(Version);
             configuration.Settings.Console = console;
             configuration.AddCommand<ConvertCommand>("convert")
                 .WithDescription("Convert local dependency sources to Glow YAML without deploying infrastructure or contacting feeds.");

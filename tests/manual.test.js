@@ -19,18 +19,13 @@ test('built-in manual has navigation and a working connected YAML example', asyn
   assert.deepEqual(new Set(affectedBy(graph, 'shared-library')), new Set(['api', 'web']));
 });
 
-test('manual CLI installation matches the package version and links to its release', async () => {
-  const [html, project] = await Promise.all([
-    readFile(new URL('../index.html', import.meta.url), 'utf8'),
-    readFile(new URL('../tools/Glow.Cli/Glow.Cli.csproj', import.meta.url), 'utf8'),
-  ]);
-  const version = project.match(/<Version>([^<]+)<\/Version>/)?.[1];
-  assert.ok(version);
+test('manual CLI installation follows the latest release without a pinned version', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /<details id="manual-cli">/);
   assert.match(html, /href="#manual-cli"/);
-  assert.ok(html.includes(`https://github.com/sujithq/glow/releases/tag/cli-v${version}`));
-  assert.ok(html.includes(`/releases/download/cli-v${version}/Glow.Cli.${version}.nupkg`));
-  assert.ok(html.includes(`--version ${version} --framework net10.0`));
-  assert.match(html, /dotnet tool install --global Glow\.Cli --source/);
+  assert.ok(html.includes('https://github.com/sujithq/glow/releases/latest'));
+  assert.ok(html.includes('https://api.github.com/repos/sujithq/glow/releases/latest'));
+  assert.doesNotMatch(html, /cli-v\d|--version \d|Glow\.Cli\.\d/, 'Release versions are not hard-coded');
+  assert.match(html, /dotnet tool install --global Glow\.Cli --source \.\\glow-release --framework net10\.0/);
   assert.match(html, /glow convert main\.json --what-if what-if\.json/);
 });

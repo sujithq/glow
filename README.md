@@ -74,10 +74,10 @@ The browser never evaluates MSBuild, imports files, or restores packages. Condit
 
 ### Convert a .NET solution locally
 
-The converter is a separate **.NET tool** using Spectre.Console, targeting .NET 10 and 11. Download the package from the [CLI v1.0.0 release](https://github.com/sujithq/glow/releases/tag/cli-v1.0.0), verify its `SHA256SUMS`, then install from the download directory with the .NET 10 SDK:
+The converter is a separate **.NET tool** using Spectre.Console, targeting .NET 10 and 11. Download the package from the [latest CLI release](https://github.com/sujithq/glow/releases/latest), verify its `SHA256SUMS`, then install from the download directory with the .NET 10 SDK:
 
 ```powershell
-dotnet tool install --global Glow.Cli --source .\glow-release --version 1.0.0 --framework net10.0
+dotnet tool install --global Glow.Cli --source .\glow-release --framework net10.0
 glow --help
 glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
 ```
@@ -88,7 +88,7 @@ Alternatively, build and install locally from the Glow checkout (a .NET 11 SDK i
 
 ```powershell
 dotnet pack tools\Glow.Cli\Glow.Cli.csproj -c Release -o artifacts\packages
-dotnet tool install Glow.Cli --tool-path artifacts\tools --source artifacts\packages --version 1.0.0
+dotnet tool install Glow.Cli --tool-path artifacts\tools --source artifacts\packages
 .\artifacts\tools\glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
 ```
 

@@ -1,23 +1,60 @@
 name: Release Glow CLI
 
+# Bump <Version> in tools/Glow.Cli/Glow.Cli.csproj (with a matching CHANGELOG.md section)
+# and merge to main. This workflow publishes cli-v<version> if that tag does not exist yet.
 on:
   push:
-    tags: ['cli-v*']
+    branches: [main]
+    paths:
+      - tools/Glow.Cli/Glow.Cli.csproj
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: cli-release-${{ github.ref }}
+  group: cli-release
   cancel-in-progress: false
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      exists: ${{ steps.tag.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read version and changelog
+        id: version
+        run: node scripts/cli-release.mjs
+      - name: Check for existing release tag
+        id: tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$TAG already exists; nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Releasing $TAG."
+          fi
+
   release:
+    needs: detect
+    if: needs.detect.outputs.exists == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      RELEASE_TAG: ${{ github.ref_name }}
+      CLI_VERSION: ${{ needs.detect.outputs.version }}
+      RELEASE_TAG: ${{ needs.detect.outputs.tag }}
+      PRERELEASE: ${{ needs.detect.outputs.prerelease }}
     defaults:
       run:
         shell: pwsh
@@ -32,14 +69,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Verify tag matches package version
-        run: |
-          [xml]$project = Get-Content tools/Glow.Cli/Glow.Cli.csproj -Raw
-          $version = [string]$project.Project.PropertyGroup.Version
-          if ($env:RELEASE_TAG -cne "cli-v$version") {
-            throw "Tag $env:RELEASE_TAG must match package version cli-v$version."
-          }
-          "CLI_VERSION=$version" >> $env:GITHUB_ENV
       - name: Test both target frameworks
         run: |
           dotnet test tools/Glow.slnx -c Release
@@ -49,7 +78,7 @@ jobs:
           npm ci --registry=https://packagefeedproxy.microsoft.io/npm/
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:GLOW_CLI_DLL = (Resolve-Path 'tools/Glow.Cli/bin/Release/net10.0/Glow.Cli.dll').Path
-          node --test tests/dotnet-cli.test.js tests/manual.test.js
+          npm test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Pack release tool
         run: |
@@ -60,8 +89,9 @@ jobs:
           $tools = Join-Path $env:RUNNER_TEMP 'glow-release-tools'
           dotnet tool install Glow.Cli --tool-path $tools --source artifacts/release --version $env:CLI_VERSION --framework net10.0 --configfile tools/NuGet.Config --no-cache
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & (Join-Path $tools 'glow') --help
+          $reported = (& (Join-Path $tools 'glow') --version | Out-String).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not $reported.StartsWith($env:CLI_VERSION)) { throw "glow --version reported '$reported', expected $env:CLI_VERSION." }
           & (Join-Path $tools 'glow') convert tools/Glow.slnx --target net10.0 --output artifacts/release-smoke.config.yaml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Create checksum and GitHub release
@@ -71,7 +101,13 @@ jobs:
           $package = "artifacts/release/Glow.Cli.$env:CLI_VERSION.nupkg"
           $hash = (Get-FileHash $package -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $(Split-Path $package -Leaf)" | Set-Content artifacts/release/SHA256SUMS -Encoding utf8NoBOM
+          node scripts/cli-release.mjs --notes artifacts/release-notes.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $options = @()
-          if ($env:CLI_VERSION.Contains('-')) { $options += '--prerelease' }
-          gh release create $env:RELEASE_TAG $package artifacts/release/SHA256SUMS --verify-tag --title "Glow CLI $env:CLI_VERSION" --notes-file tools/Glow.Cli/README.md @options
+          if ($env:PRERELEASE -eq 'true') { $options += '--prerelease' }
+          gh release create $env:RELEASE_TAG $package artifacts/release/SHA256SUMS `
+            --target $env:GITHUB_SHA `
+            --title "Glow CLI $env:CLI_VERSION" `
+            --notes (Get-Content artifacts/release-notes.md -Raw) `
+            --generate-notes @options
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

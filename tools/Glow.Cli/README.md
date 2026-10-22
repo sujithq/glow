@@ -13,19 +13,27 @@ Glow reads local input files. It does not deploy infrastructure, apply plans, re
 
 ## Install
 
-Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Download `Glow.Cli.1.0.0.nupkg` and `SHA256SUMS` from the [CLI v1.0.0 release](https://github.com/sujithq/glow/releases/tag/cli-v1.0.0), and compare the package's SHA-256 hash with the published checksum before installing.
-
-From the directory containing the downloaded package:
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Download `Glow.Cli.<version>.nupkg` and `SHA256SUMS` from the [latest CLI release](https://github.com/sujithq/glow/releases/latest), and compare the package's SHA-256 hash with the published checksum before installing. In PowerShell:
 
 ```powershell
-dotnet tool install --global Glow.Cli --source . --version 1.0.0 --framework net10.0
-glow --help
+New-Item -ItemType Directory -Path .\glow-release -Force
+$release = Invoke-RestMethod https://api.github.com/repos/sujithq/glow/releases/latest
+$release.assets | ForEach-Object { Invoke-WebRequest $_.browser_download_url -OutFile ".\glow-release\$($_.name)" }
+Get-FileHash .\glow-release\Glow.Cli.*.nupkg -Algorithm SHA256
+Get-Content .\glow-release\SHA256SUMS
+```
+
+After the hashes match:
+
+```powershell
+dotnet tool install --global Glow.Cli --source .\glow-release --framework net10.0
+glow --version
 glow convert --help
 ```
 
-No Node.js, Claude installation, or repository checkout is required. This is a GitHub release package, not a NuGet.org publication: keep the local `--source` option. The package also includes a .NET 11 target, which requires a matching runtime.
+No Node.js, Claude installation, or repository checkout is required. This is a GitHub release package, not a NuGet.org publication: keep the local `--source` option, which installs the newest package in that directory. Add `--version <version>` to pin a specific release. The package also includes a .NET 11 target, which requires a matching runtime.
 
-To upgrade an existing global installation, use `dotnet tool update` instead of `dotnet tool install` with the same source, version, and framework options.
+To upgrade an existing global installation, download the new release into the same directory and run `dotnet tool update --global Glow.Cli --source .\glow-release --framework net10.0`. Changes per version are listed in the [changelog](https://github.com/sujithq/glow/blob/main/CHANGELOG.md).
 
 The examples below use **PowerShell 7**, so redirected JSON is written as UTF-8. Run the preparation commands only against trusted projects and the intended environment.
 
