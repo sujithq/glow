@@ -7,6 +7,8 @@
     "test": "node --test",
     "build": "node build.js",
     "dev": "node build.js --serve",
+    "release:prepare": "node scripts/prepare-cli-release.mjs",
+    "release:apply": "node scripts/prepare-cli-release.mjs --apply",
     "package:skill": "npm run build && mkdir -p dist/downloads && tar -czf dist/downloads/glow.tar.gz -C dist/skill glow"
   },
   "repository": {

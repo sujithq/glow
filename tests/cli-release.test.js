@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { changelogSection, readVersion, releaseNotes } from '../scripts/cli-release.mjs';
+import { bump, classifySubject, formatVersion, getUnreleasedSection, parseVersion, transformChangelogForRelease } from '../scripts/prepare-cli-release.mjs';
 
 const changelog = `# Changelog
 
@@ -51,4 +52,31 @@ test('repository CHANGELOG documents the current CLI version', async () => {
     readFile(new URL('../CHANGELOG.md', import.meta.url), 'utf8'),
   ]);
   assert.ok(changelogSection(current, readVersion(project)));
+});
+
+test('calculated release bumps follow Conventional Commits', () => {
+  assert.equal(classifySubject('feat(cli): add release automation'), 'minor');
+  assert.equal(classifySubject('fix(cli): stop overwriting output'), 'patch');
+  assert.equal(classifySubject('feat(cli)!: replace conversion API'), 'major');
+  assert.equal(classifySubject('docs: update readme'), null);
+  const current = parseVersion('1.2.3');
+  assert.equal(formatVersion(bump(current, 'patch')), '1.2.4');
+  assert.equal(formatVersion(bump(current, 'minor')), '1.3.0');
+  assert.equal(formatVersion(bump(current, 'major')), '2.0.0');
+});
+
+test('Unreleased changelog notes are isolated from the next heading', () => {
+  assert.equal(
+    getUnreleasedSection('## Unreleased\n\n- One change.\n- Another change.\n\n## 1.0.0\n\n- Old change.\n'),
+    '- One change.\n- Another change.',
+  );
+  assert.equal(getUnreleasedSection('# Changelog\n\n## 1.0.0\n\n- Old change.'), null);
+});
+
+test('applying a release replaces Unreleased without duplicating notes', () => {
+  const source = '# Changelog\n\n## Unreleased\n\n- One change.\n- Another change.\n\n## 1.0.0\n\n- Old change.\n';
+  const transformed = transformChangelogForRelease(source, '1.0.1', '- One change.\n- Another change.');
+  assert.ok(transformed.includes('# Changelog\n\n## Unreleased\n\n## 1.0.1\n\n- One change.\n- Another change.'));
+  assert.ok(transformed.includes('## 1.0.0\n\n- Old change.'));
+  assert.equal(transformed.match(/One change/g)?.length, 1);
 });
