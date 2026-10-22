@@ -68,7 +68,23 @@ Impact analysis traces declared relationships; it does **not** predict breaking 
 
 Import `.csproj` for unconditional `PackageReference` declarations or `packages.config` for installed versions. A bare `.csproj` version is a minimum constraint, not an installed version, so `1.2.3` becomes `>=1.2.3` and remains unscanned; an exact `[1.2.3]` constraint becomes `1.2.3`. Missing versions and MSBuild properties remain unresolved. Use `ecosystem: NuGet` and an independently verified exact version in YAML for resolved snapshots.
 
-Glow never evaluates MSBuild, imports files, or restores packages. Conditional package references, project references, central package definitions, and unsupported update constructs are rejected rather than guessed. Model projects as explicit YAML services. Restore assets, lockfiles, multiple versions of the same package, and target-framework-specific graphs are not supported. See [usage](docs/USAGE.md) for details.
+The browser never evaluates MSBuild, imports files, or restores packages. Conditional package references, project references, central package definitions, and unsupported update constructs in uploaded `.csproj` files are rejected rather than guessed. Model projects as explicit YAML services, or use the local solution converter below. The browser does not directly import restore assets or lockfiles, and multiple versions of the same package are not supported.
+
+### Convert a .NET solution locally
+
+The converter is a separate **.NET tool** using Spectre.Console, targeting .NET 10 and 11. Build and install it locally from the Glow checkout (a .NET 11 SDK is required to build both targets):
+
+```powershell
+dotnet pack tools\Glow.Cli\Glow.Cli.csproj -c Release -o artifacts\packages
+dotnet tool install Glow.Cli --tool-path artifacts\tools --source artifacts\packages --version 1.0.0
+.\artifacts\tools\glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+```
+
+Restore your trusted input solution separately first. Both `.sln` and `.slnx` are supported. The CLI reads each project's existing `obj\project.assets.json`, including referenced projects outside the solution, and writes projects as services plus resolved NuGet packages and dependency edges. It does not execute MSBuild, restore packages, or contact a feed. Upload the generated YAML with **Import config**. Node.js is not required to run the tool.
+
+For multiple restore targets, specify the exact assets target key, for example `--target net8.0`. Conflicting package versions, missing assets, and configurations exceeding 300 components or 1 MB fail explicitly. Existing output files are never overwritten. See [solution converter usage](docs/USAGE.md#local-solution-converter) for target selection and limitations.
+
+See [.NET tool setup and extension guide](docs/CLI.md) for .NET 10-only builds, installation, unit tests, and adding future input formats through `IInputConverter`.
 
 ## Claude skill and iso-glow
 
@@ -97,10 +113,12 @@ The [deployment workflow](.github/workflows/deploy.yml) tests and builds every P
 - [Setup and Pages deployment](docs/SETUP.md)
 - [Usage and stakeholder workflows](docs/USAGE.md)
 - [Configuration schema and module API](docs/API.md)
+- [.NET CLI setup, testing, and extension guide](docs/CLI.md)
 - [npm registry API](https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md)
 - [NuGet version index API](https://learn.microsoft.com/en-us/nuget/api/package-base-address-resource)
 - [NuGet version ranges](https://learn.microsoft.com/en-us/nuget/concepts/package-versioning)
 - [NuGet PackageReference](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files)
+- [NuGet restore dependency graphs and project.assets.json](https://learn.microsoft.com/en-us/nuget/concepts/dependency-resolution)
 - [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser)
 - [OSV query API](https://google.github.io/osv.dev/api/#tag/vulnerability/operation/OSV_Query)
 - [OSV ecosystem identifiers](https://github.com/ossf/osv-schema/blob/main/validation/schema.json) and [NuGet version support](https://github.com/google/osv.dev/blob/master/osv/ecosystems/nuget.py)
@@ -111,6 +129,6 @@ The [deployment workflow](.github/workflows/deploy.yml) tests and builds every P
 
 ## Verification
 
-`npm test` uses Node's built-in test runner for parser validation, examples, cyclic impact traversal, exact-version gating, mocked registry/security responses, API failures, cancellation, and request concurrency. `npm run build` bundles local dependencies with esbuild; no runtime CDN is required. Run `npm audit` to check installed npm dependencies.
+`npm test` uses Node's built-in test runner for parser validation, examples, cyclic impact traversal, exact-version gating, mocked registry/security responses, API failures, cancellation, and request concurrency. `dotnet test tools\Glow.slnx` runs the CLI's xUnit tests on .NET 10 and 11; see the [CLI guide](docs/CLI.md) for browser interoperability tests. `npm run build` bundles local dependencies with esbuild; no runtime CDN is required. Run `npm audit` to check installed npm dependencies.
 
 MIT licensed. No quantified productivity or security coverage guarantees are made.

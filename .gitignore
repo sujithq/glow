@@ -1,3 +1,16 @@
 node_modules/
 dist/
 *.log
+
+# .NET restore/build output (e.g. from examples/sample.csproj)
+bin/
+obj/
+
+# .NET tool packages and local tool installations
+/artifacts/
+*.nupkg
+*.snupkg
+TestResults/
+
+# Default output of glow convert; may contain private project data
+/glow.config.yaml

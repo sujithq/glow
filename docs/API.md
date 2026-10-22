@@ -45,6 +45,22 @@ const consumers = affectedBy(graph, graph.nodes[0].id);
 
 `Graph` is `{ project, nodes, edges, refreshedAt? }`. Edges are `{source, target}` meaning “source depends on target.” Nodes contain `id`, `name`, `kind`, `ecosystem`, `version`, `status`, `type`, `description`, `license`, `repository`, `deprecated`, `dependencies`, `advisories`, `vulnerabilityCount`, `scan`, and `errors`.
 
+## .NET CLI conversion API (`tools/Glow.Cli/Conversion`)
+
+The .NET tool is separate from the browser bundle. Its converter contract is:
+
+```csharp
+IInputConverter converter = new DotnetSolutionConverter();
+var configuration = await converter.ConvertAsync(solutionPath, new ConversionOptions(Target: "net10.0"));
+var yamlText = GlowYamlWriter.Serialize(configuration);
+```
+
+`IInputConverter` exposes supported `FileExtensions` and `ConvertAsync(inputPath, options, cancellationToken)`. `DotnetSolutionConverter` reads `.sln`/`.slnx` and local NuGet assets versions 3/4 from each project's default `obj` directory. It performs filesystem reads only, never builds/restores or network requests. Projects are path-qualified service nodes; package IDs retain NuGet spelling and references normalize on import.
+
+`ConversionService` selects one registered converter by input extension. `GlowYamlWriter.Serialize` validates component names, ecosystems, duplicate identities, dependency references, node count, and UTF-8 output size before serializing deterministic YAML. Future converters reuse the same model and validation. Browser interoperability is tested using the actual JavaScript `parseInput` implementation.
+
+The command is `glow convert <input> [-o <file>] [-t <target>]`. Spectre.Console.Cli provides help and validation; existing output files are never overwritten, and errors exit nonzero. See [CLI setup and extension](CLI.md) and [conversion limitations](USAGE.md#local-solution-converter).
+
 ## Live API (`src/data-fetcher.js`)
 
 ```js
@@ -75,6 +91,8 @@ However, OSV's [package lookup](https://github.com/google/osv.dev/blob/902dd4b5c
 - `createIsoGlowFigure(graph, {onSelect, view} = {})`
 
 The adapter uses an original SVG implementation. The iso-glow authoring contract is a figure object with `id`, `name`, `hint`, `aria`, and `mount(stage, api)`, which may return lifecycle handlers. Glow returns an `unmount()` handler to remove its scene.
+
+Graph component types use distinct geometry independent of their health/security status colors: packages remain compact isometric boxes, while services (including project nodes imported by the .NET tool) appear as taller towers with two horizontal bands. The graph legend identifies both shapes. Tower-aware spacing and edge anchors preserve the existing dependency connections.
 
 To integrate with an **existing installed iso-glow gallery**:
 

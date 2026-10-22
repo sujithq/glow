@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      - run: npm ci --registry=https://packagefeedproxy.microsoft.io/npm/
       - run: npm test
       - run: npm run package:skill
       - name: Configure Pages
@@ -33,9 +33,43 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+  cli:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+          include-prerelease: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: dotnet test tools/Glow.slnx -c Release
+      - run: dotnet pack tools/Glow.Cli/Glow.Cli.csproj -c Release --no-restore -o artifacts/packages
+      - run: npm ci --registry=https://packagefeedproxy.microsoft.io/npm/
+      - name: Browser interoperability
+        shell: pwsh
+        run: |
+          $env:GLOW_CLI_DLL = (Resolve-Path 'tools/Glow.Cli/bin/Release/net10.0/Glow.Cli.dll').Path
+          node --test tests/dotnet-cli.test.js
+          exit $LASTEXITCODE
+      - name: Install and smoke-test packed tool
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'glow-tools'
+          dotnet tool install Glow.Cli --tool-path $tools --source artifacts/packages --version 1.0.0 --framework net10.0 --configfile tools/NuGet.Config
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $tools 'glow') convert tools/Glow.slnx --target net10.0 --output artifacts/ci.config.yaml
+          exit $LASTEXITCODE
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
+    needs: [build, cli]
     runs-on: ubuntu-latest
     permissions:
       pages: write
