@@ -15,6 +15,6 @@
     <PackageReference Include="Spectre.Console" Version="0.57.2" />
     <PackageReference Include="Spectre.Console.Cli" Version="0.57.2" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
-    <None Include="../../docs/CLI.md" Pack="true" PackagePath="/README.md" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

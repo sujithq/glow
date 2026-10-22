@@ -102,6 +102,8 @@ See [.NET tool setup and extension guide](docs/CLI.md) for .NET 10-only builds, 
 
 The same .NET tool converts Terraform JSON (`terraform show -json`) or a compiled ARM template plus Azure what-if JSON into an importable Glow configuration. It reads local files only and never applies a plan or deploys. Pass an optional local `--icon-map` to embed selected SVG/PNG icons from Microsoft's official Azure icon pack; the pack is not bundled. See [CLI usage and icon-map details](docs/CLI.md#convert-terraform-and-bicepazure-plans).
 
+The [tool README](tools/Glow.Cli/README.md) includes complete [Bicep preparation and conversion steps](tools/Glow.Cli/README.md#bicep-visualize-planned-azure-changes) and [Terraform plan export and conversion steps](tools/Glow.Cli/README.md#terraform-visualize-a-saved-plan), including prerequisites, dashboard import, and privacy warnings.
+
 ## Claude skill and iso-glow
 
 ```sh

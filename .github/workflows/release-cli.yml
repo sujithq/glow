@@ -71,20 +71,7 @@ jobs:
           $package = "artifacts/release/Glow.Cli.$env:CLI_VERSION.nupkg"
           $hash = (Get-FileHash $package -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $(Split-Path $package -Leaf)" | Set-Content artifacts/release/SHA256SUMS -Encoding utf8NoBOM
-          $notes = @"
-          Install the .NET 10 SDK, download the package and SHA256SUMS, and verify the checksum.
-
-          Install from the download directory:
-          dotnet tool install --global Glow.Cli --source . --version $env:CLI_VERSION --framework net10.0
-
-          Run glow --help, then glow convert <input> --output glow.config.yaml and import the YAML into Glow.
-
-          Supports restored .NET solutions, Terraform plan JSON, and ARM template plus Azure what-if JSON.
-          The package includes .NET 10 and .NET 11 targets; .NET 11 needs a matching runtime.
-          No Node.js is required. Conversion does not restore, build, deploy, or contact a network service.
-          Distributed through GitHub Releases, not NuGet.org.
-          "@
           $options = @()
           if ($env:CLI_VERSION.Contains('-')) { $options += '--prerelease' }
-          gh release create $env:RELEASE_TAG $package artifacts/release/SHA256SUMS --verify-tag --title "Glow CLI $env:CLI_VERSION" --notes $notes @options
+          gh release create $env:RELEASE_TAG $package artifacts/release/SHA256SUMS --verify-tag --title "Glow CLI $env:CLI_VERSION" --notes-file tools/Glow.Cli/README.md @options
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -2,6 +2,8 @@
 
 `Glow.Cli` is a packable .NET tool with the command name `glow`. It uses Spectre.Console and Spectre.Console.Cli for help, argument validation, and terminal output. The tool targets **.NET 10 and .NET 11**; .NET 11 currently requires a matching preview SDK/runtime. It is independent of Node.js and the browser dashboard.
 
+For task-oriented quick starts, see the [tool README](../tools/Glow.Cli/README.md), including [Bicep](../tools/Glow.Cli/README.md#bicep-visualize-planned-azure-changes), [Terraform](../tools/Glow.Cli/README.md#terraform-visualize-a-saved-plan), and [.NET solution](../tools/Glow.Cli/README.md#net-visualize-a-restored-solution) workflows. That end-user README is embedded in new tool packages and used for automated release notes.
+
 ## Install from a GitHub release
 
 Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) first. Download `Glow.Cli.1.0.0.nupkg` and `SHA256SUMS` from the [CLI v1.0.0 release](https://github.com/sujithq/glow/releases/tag/cli-v1.0.0). The package is framework-dependent and works on Windows, Linux, and macOS with a compatible runtime. .NET 10 is the stable choice; the optional .NET 11 target requires a matching runtime.
@@ -130,7 +132,7 @@ git push origin cli-v1.0.1
 
 The workflow tests both framework builds, checks browser interoperability, packs and installs the tool, smoke-tests solution conversion, and publishes the `.nupkg` plus `SHA256SUMS` as GitHub release assets. Tags with a prerelease package version create prereleases. It uses the repository's built-in Actions token, with release-write permission scoped to the release job; no NuGet API key is needed.
 
-Update the manual's versioned download links and installation commands for each release. Publishing to NuGet.org is a separate opt-in setup; a GitHub release does not make `dotnet tool install --global Glow.Cli` work without the downloaded local source.
+Update the tool README and manual's versioned download links and installation commands for each release. Publishing to NuGet.org is a separate opt-in setup; a GitHub release does not make `dotnet tool install --global Glow.Cli` work without the downloaded local source.
 
 ## Add another input format
 
