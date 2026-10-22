@@ -4,6 +4,7 @@
   "description": "Interactive isometric dependency dashboard and Claude skill",
   "private": true,
   "scripts": {
+    "convert:solution": "node cli/glow-solution.js",
     "test": "node --test",
     "build": "node build.js",
     "dev": "node build.js --serve",

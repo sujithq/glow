@@ -45,6 +45,20 @@ const consumers = affectedBy(graph, graph.nodes[0].id);
 
 `Graph` is `{ project, nodes, edges, refreshedAt? }`. Edges are `{source, target}` meaning “source depends on target.” Nodes contain `id`, `name`, `kind`, `ecosystem`, `version`, `status`, `type`, `description`, `license`, `repository`, `deprecated`, `dependencies`, `advisories`, `vulnerabilityCount`, `scan`, and `errors`.
 
+## Local solution converter (`src/solution-converter.js`)
+
+This Node.js-only module is separate from the browser bundle:
+
+```js
+import { convertSolution } from './src/solution-converter.js';
+const yamlText = await convertSolution(solutionPath, { target: 'net8.0' });
+const graph = parseInput(yamlText);
+```
+
+`convertSolution(filename, {target?} = {}) → Promise<string>` reads `.sln`/`.slnx` and local NuGet assets versions 3/4 from each project's default `obj` directory. It returns deterministic YAML validated through `parseInput`, or throws without returning a partial configuration. It performs filesystem reads only, never builds/restores or network requests. Projects are path-qualified service nodes; package IDs retain NuGet spelling and references normalize on import.
+
+The CLI entry point is `cli/glow-solution.js` (`npm run convert:solution -- ...`). It writes validated YAML using exclusive file creation and exits nonzero on errors. See [usage](USAGE.md#local-solution-converter) for target selection, restore prerequisites, and graph limitations.
+
 ## Live API (`src/data-fetcher.js`)
 
 ```js

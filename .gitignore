@@ -1,3 +1,10 @@
 node_modules/
 dist/
 *.log
+
+# .NET restore/build output (e.g. from examples/sample.csproj)
+bin/
+obj/
+
+# Default output of npm run convert:solution; may contain private project data
+/glow.config.yaml

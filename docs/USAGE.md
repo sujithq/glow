@@ -21,6 +21,30 @@ Use `dependencies` inside individual YAML components to model transitive package
 - Refresh sends NuGet package IDs to NuGet.org for the latest stable version and exact versions to OSV for security findings. Registry metadata alone never clears security status. No private feeds or credentials are supported.
 - Original NuGet spelling is preserved as `packageName` for OSV queries. OSV's NuGet matching is case-sensitive, so empty results show `limited coverage` and remain yellow in Security; they are never treated as clean scans.
 
+### Local solution converter
+
+The repository includes a Node.js CLI for `.sln` and `.slnx` solutions. Run `npm ci` in the Glow checkout first. Separately restore your **trusted** solution using your configured NuGet feeds, then run the converter from the Glow checkout:
+
+```powershell
+dotnet restore "C:\src\App\App.slnx"
+npm run convert:solution -- "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+```
+
+Upload the resulting file through **Import config**; the browser needs only that YAML, not the solution directory. `.sln` works with the same command. `node cli\glow-solution.js --help` shows all options. `--output` (`-o`) defaults to `glow.config.yaml` in the current directory and refuses to overwrite an existing file.
+
+The CLI reads solution project paths and existing `obj\project.assets.json` files (assets versions 3 and 4). It makes no network calls, executes no projects, and never restores or builds. Restoring is a separate user action and can execute MSBuild logic; do not restore untrusted projects just to visualize them.
+
+- C#, F#, and Visual Basic projects with PackageReference restore assets are supported. Referenced projects outside the solution are included recursively. Solution folders are organizational only, not graph nodes.
+- Each project becomes a service named `project:<solution-relative-project-path>`, with `type: project`. These are project nodes, not claims about deployed services. Path-based names distinguish projects with identical filenames.
+- Resolved packages become NuGet nodes with exact versions and original spelling preserved for advisory queries. Project-reference edges, direct project-to-package edges, and package-to-package edges come from restore metadata; transitive packages are not falsely attached as direct project dependencies. Identical package versions are shared across projects, with the union of their declared package edges.
+- A project with one restore target uses that target. Multiple frameworks or runtime targets require `--target` (`-t`) with an **exact** key from `targets` in the assets file, such as `net8.0` or `net8.0/win-x64`. Errors list available keys. An explicit target must exist in every included project; the CLI does not guess compatible frameworks or merge target graphs. Without the option, different projects may each use their own sole target.
+- Restore the solution locally after dependency, framework, configuration, or central-package changes. Conditions and centrally managed versions are represented only as resolved in those existing assets; the CLI cannot prove that assets are current. Shared/custom intermediate directories are unsupported: each project's assets must be in its default `obj` directory. Legacy `packages.config` projects without these assets and other project types are rejected.
+- Missing/malformed assets, restore errors, unsupported assets versions, dangling dependencies, conflicting versions of one package, and browser limits (300 total nodes, 1 MB YAML, component-name limits) fail rather than produce a partial graph. Split a large/conflicting solution or align versions before conversion. No vulnerability findings or live scan clearance are invented.
+
+The output includes project paths and package identities; review it before sharing. Absolute restore paths, feed URLs, credentials, and package-cache paths are not copied into the YAML. Live refresh still uses the dashboard's public services and existing NuGet coverage limitations, including for packages originally restored from private feeds.
+
+NuGet documents the restore graph and its default location in [How NuGet resolves package dependencies](https://learn.microsoft.com/en-us/nuget/concepts/dependency-resolution).
+
 ## Explore
 
 - **Health:** configured healthy/warning/critical status, configured/live findings, metadata differences, deprecation, and API errors.

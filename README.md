@@ -68,7 +68,19 @@ Impact analysis traces declared relationships; it does **not** predict breaking 
 
 Import `.csproj` for unconditional `PackageReference` declarations or `packages.config` for installed versions. A bare `.csproj` version is a minimum constraint, not an installed version, so `1.2.3` becomes `>=1.2.3` and remains unscanned; an exact `[1.2.3]` constraint becomes `1.2.3`. Missing versions and MSBuild properties remain unresolved. Use `ecosystem: NuGet` and an independently verified exact version in YAML for resolved snapshots.
 
-Glow never evaluates MSBuild, imports files, or restores packages. Conditional package references, project references, central package definitions, and unsupported update constructs are rejected rather than guessed. Model projects as explicit YAML services. Restore assets, lockfiles, multiple versions of the same package, and target-framework-specific graphs are not supported. See [usage](docs/USAGE.md) for details.
+The browser never evaluates MSBuild, imports files, or restores packages. Conditional package references, project references, central package definitions, and unsupported update constructs in uploaded `.csproj` files are rejected rather than guessed. Model projects as explicit YAML services, or use the local solution converter below. The browser does not directly import restore assets or lockfiles, and multiple versions of the same package are not supported.
+
+### Convert a .NET solution locally
+
+After restoring a trusted solution with `dotnet restore`, run this from the Glow checkout (with its npm dependencies installed):
+
+```powershell
+npm run convert:solution -- "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+```
+
+Both `.sln` and `.slnx` are supported. The CLI reads each project's existing `obj\project.assets.json`, including referenced projects outside the solution, and writes projects as services plus resolved NuGet packages and dependency edges. It does not execute MSBuild, restore packages, or contact a feed. Upload the generated YAML with **Import config**.
+
+For multiple restore targets, specify the exact assets target key, for example `--target net8.0`. Conflicting package versions, missing assets, and configurations exceeding 300 components or 1 MB fail explicitly. Existing output files are never overwritten. See [solution converter usage](docs/USAGE.md#local-solution-converter) for target selection and limitations.
 
 ## Claude skill and iso-glow
 
@@ -101,6 +113,7 @@ The [deployment workflow](.github/workflows/deploy.yml) tests and builds every P
 - [NuGet version index API](https://learn.microsoft.com/en-us/nuget/api/package-base-address-resource)
 - [NuGet version ranges](https://learn.microsoft.com/en-us/nuget/concepts/package-versioning)
 - [NuGet PackageReference](https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files)
+- [NuGet restore dependency graphs and project.assets.json](https://learn.microsoft.com/en-us/nuget/concepts/dependency-resolution)
 - [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser)
 - [OSV query API](https://google.github.io/osv.dev/api/#tag/vulnerability/operation/OSV_Query)
 - [OSV ecosystem identifiers](https://github.com/ossf/osv-schema/blob/main/validation/schema.json) and [NuGet version support](https://github.com/google/osv.dev/blob/master/osv/ecosystems/nuget.py)
