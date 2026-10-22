@@ -92,6 +92,8 @@ However, OSV's [package lookup](https://github.com/google/osv.dev/blob/902dd4b5c
 
 The adapter uses an original SVG implementation. The iso-glow authoring contract is a figure object with `id`, `name`, `hint`, `aria`, and `mount(stage, api)`, which may return lifecycle handlers. Glow returns an `unmount()` handler to remove its scene.
 
+Graph component types use distinct geometry independent of their health/security status colors: packages remain compact isometric boxes, while services (including project nodes imported by the .NET tool) appear as taller towers with two horizontal bands. The graph legend identifies both shapes. Tower-aware spacing and edge anchors preserve the existing dependency connections.
+
 To integrate with an **existing installed iso-glow gallery**:
 
 1. Build Glow, or use the prebuilt archive.

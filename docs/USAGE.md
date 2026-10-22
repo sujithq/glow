@@ -52,6 +52,7 @@ NuGet documents the restore graph and its default location in [How NuGet resolve
 - **Dependency:** neutral green topology; does not indicate security clearance. Vulnerability animations still identify reported risks.
 - **Audience:** shortcuts to a useful view, not access control. Developer/Architect select Dependency; DevOps selects Health; Security selects Security.
 - **Layer:** show all nodes, packages, or services. Edges with hidden endpoints disappear.
+- **Shape:** packages render as compact boxes; services/projects render as taller two-tier towers. Shape identifies component type while color continues to indicate health/security status. The graph legend shows both cues.
 - **Find / zoom / reset:** filter components, adjust SVG size, and restore the map.
 - **Select:** click or focus a block with Tab and press Enter/Space. The inspector shows versions, license, scan state, findings, configured dependencies, and affected dependents. Dashed outlines identify affected consumers. Hover/focus connections to highlight their source/target relationship.
 

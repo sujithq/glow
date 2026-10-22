@@ -65,7 +65,12 @@
         <div class="graph-container">
           <svg id="graph" role="group" aria-label="Interactive isometric dependency graph"></svg>
         </div>
-        <div class="legend"><span class="dot healthy"></span>Healthy <span class="dot warning"></span>Warning / unverified <span class="dot critical"></span>Critical <span>Click a block · hover a connection · tab to explore</span></div>
+        <div class="legend" role="group" aria-label="Graph legend">
+          <span class="dot healthy"></span>Healthy <span class="dot warning"></span>Warning / unverified <span class="dot critical"></span>Critical
+          <span class="shape-key"><svg viewBox="0 0 28 24" aria-hidden="true"><path d="M14 1 26 7 14 13 2 7 14 1ZM2 7v9l12 7 12-7V7M14 13v10"/></svg>Package</span>
+          <span class="shape-key"><svg viewBox="0 0 28 30" aria-hidden="true"><path d="M14 1 26 7 14 13 2 7 14 1ZM2 7v13l12 8 12-8V7M14 13v15M4 15l10 6 10-6M4 19l10 6 10-6"/></svg>Service / project</span>
+          <span class="legend-hint">Click a component · hover a connection · tab to explore</span>
+        </div>
       </div>
       <aside id="details" aria-label="Component details" aria-live="polite"></aside>
     </section>
