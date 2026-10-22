@@ -4,6 +4,8 @@ Changes to the `glow` .NET tool. Add entries under **Unreleased** as you work. T
 
 ## Unreleased
 
+## 1.1.0
+
 - Release automation: bumping `<Version>` publishes the GitHub release; release notes come from this changelog.
 - Dedicated tool README with Bicep, Terraform, and .NET solution workflows, embedded in the package.
 - `glow --version` reports the package version.

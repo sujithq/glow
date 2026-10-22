@@ -4,7 +4,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>glow</ToolCommandName>
     <PackageId>Glow.Cli</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Description>Convert local dependency sources into importable Glow configuration files.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/sujithq/glow</RepositoryUrl>
