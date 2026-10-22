@@ -6,5 +6,11 @@ dist/
 bin/
 obj/
 
-# Default output of npm run convert:solution; may contain private project data
+# .NET tool packages and local tool installations
+/artifacts/
+*.nupkg
+*.snupkg
+TestResults/
+
+# Default output of glow convert; may contain private project data
 /glow.config.yaml

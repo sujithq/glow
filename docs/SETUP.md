@@ -12,6 +12,8 @@ npm run dev
 
 Open http://127.0.0.1:4173. JavaScript/CSS changes rebuild automatically. Restart after editing HTML/examples (these are copied at startup).
 
+The optional solution converter is a separate .NET 10/11 tool, not an npm script. See [CLI setup](CLI.md) for packing, installing, and extending it. `dotnet test tools\Glow.slnx` runs its unit tests; building both targets requires the .NET 11 SDK and running all tests requires both runtimes.
+
 For a production bundle and Claude archive:
 
 ```sh
@@ -26,7 +28,7 @@ Open http://127.0.0.1:8000. Serve over HTTP rather than opening `index.html` wit
 1. A repository administrator opens **Settings → Pages** in `sujithq/glow`.
 2. Under **Build and deployment**, select **GitHub Actions** as the source. Ensure repository/organization policy permits Pages and Actions.
 3. Merge the implementation into `main`. Alternatively, run **Validate and deploy Glow** using **Run workflow**, selecting `main`.
-4. Review the workflow's build and deploy jobs. The build runs tests, bundles all local runtime dependencies, and creates the skill download.
+4. Review the workflow's build, CLI, and deploy jobs. The build bundles the dashboard and skill download. The CLI matrix runs .NET 10/11 unit tests, browser interoperability, and packed-tool installation on Windows and Linux. Both validation jobs must pass before deployment.
 5. Wait for the `github-pages` environment deployment to succeed.
 6. Visit **https://sujithq.github.io/glow/** and verify examples, imports, views, and the skill download.
 

@@ -23,14 +23,14 @@ Use `dependencies` inside individual YAML components to model transitive package
 
 ### Local solution converter
 
-The repository includes a Node.js CLI for `.sln` and `.slnx` solutions. Run `npm ci` in the Glow checkout first. Separately restore your **trusted** solution using your configured NuGet feeds, then run the converter from the Glow checkout:
+Install the `Glow.Cli` .NET tool using the [CLI setup guide](CLI.md). It targets .NET 10 and 11 and requires no Node.js installation. Separately restore your **trusted** solution using your configured NuGet feeds, then run the installed converter:
 
 ```powershell
 dotnet restore "C:\src\App\App.slnx"
-npm run convert:solution -- "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
 ```
 
-Upload the resulting file through **Import config**; the browser needs only that YAML, not the solution directory. `.sln` works with the same command. `node cli\glow-solution.js --help` shows all options. `--output` (`-o`) defaults to `glow.config.yaml` in the current directory and refuses to overwrite an existing file.
+Upload the resulting file through **Import config**; the browser needs only that YAML, not the solution directory. `.sln` works with the same command. `glow convert --help` shows all options. For a tool-path installation, use the installed executable's full path instead of `glow`. `--output` (`-o`) defaults to `glow.config.yaml` in the current directory and refuses to overwrite an existing file.
 
 The CLI reads solution project paths and existing `obj\project.assets.json` files (assets versions 3 and 4). It makes no network calls, executes no projects, and never restores or builds. Restoring is a separate user action and can execute MSBuild logic; do not restore untrusted projects just to visualize them.
 

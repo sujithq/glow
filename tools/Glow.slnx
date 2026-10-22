@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Glow.Cli/Glow.Cli.csproj" />
+  <Project Path="Glow.Cli.Tests/Glow.Cli.Tests.csproj" />
+</Solution>

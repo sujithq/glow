@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>glow</ToolCommandName>
+    <PackageId>Glow.Cli</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Convert local dependency sources into importable Glow configuration files.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/sujithq/glow</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.57.2" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
+    <None Include="../../docs/CLI.md" Pack="true" PackagePath="/README.md" />
+  </ItemGroup>
+</Project>

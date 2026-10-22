@@ -1,0 +1,105 @@
+project: Glow
+dependencies:
+- name: Microsoft.CodeCoverage
+  version: 18.11.0
+  ecosystem: NuGet
+  dependencies: []
+- name: Microsoft.Extensions.DependencyInjection
+  version: 10.0.13
+  ecosystem: NuGet
+  dependencies: []
+- name: Microsoft.NET.Test.Sdk
+  version: 18.11.0
+  ecosystem: NuGet
+  dependencies:
+  - microsoft.codecoverage
+  - microsoft.testplatform.testhost
+- name: Microsoft.TestPlatform.ObjectModel
+  version: 18.11.0
+  ecosystem: NuGet
+  dependencies: []
+- name: Microsoft.TestPlatform.TestHost
+  version: 18.11.0
+  ecosystem: NuGet
+  dependencies:
+  - microsoft.testplatform.objectmodel
+- name: Spectre.Console
+  version: 0.57.2
+  ecosystem: NuGet
+  dependencies:
+  - spectre.console.ansi
+- name: Spectre.Console.Ansi
+  version: 0.57.2
+  ecosystem: NuGet
+  dependencies: []
+- name: Spectre.Console.Cli
+  version: 0.57.2
+  ecosystem: NuGet
+  dependencies:
+  - spectre.console
+- name: Spectre.Console.Testing
+  version: 0.57.2
+  ecosystem: NuGet
+  dependencies:
+  - spectre.console
+- name: YamlDotNet
+  version: 18.1.0
+  ecosystem: NuGet
+  dependencies: []
+- name: xunit
+  version: 2.9.3
+  ecosystem: NuGet
+  dependencies:
+  - xunit.analyzers
+  - xunit.assert
+  - xunit.core
+- name: xunit.abstractions
+  version: 2.0.3
+  ecosystem: NuGet
+  dependencies: []
+- name: xunit.analyzers
+  version: 1.18.0
+  ecosystem: NuGet
+  dependencies: []
+- name: xunit.assert
+  version: 2.9.3
+  ecosystem: NuGet
+  dependencies: []
+- name: xunit.core
+  version: 2.9.3
+  ecosystem: NuGet
+  dependencies:
+  - xunit.extensibility.core
+  - xunit.extensibility.execution
+- name: xunit.extensibility.core
+  version: 2.9.3
+  ecosystem: NuGet
+  dependencies:
+  - xunit.abstractions
+- name: xunit.extensibility.execution
+  version: 2.9.3
+  ecosystem: NuGet
+  dependencies:
+  - xunit.extensibility.core
+- name: xunit.runner.visualstudio
+  version: 4.0.1
+  ecosystem: NuGet
+  dependencies: []
+services:
+- name: project:Glow.Cli.Tests/Glow.Cli.Tests.csproj
+  type: project
+  description: 'Glow.Cli.Tests/Glow.Cli.Tests.csproj (restore target: net11.0)'
+  dependencies:
+  - microsoft.net.test.sdk
+  - project:Glow.Cli/Glow.Cli.csproj
+  - spectre.console.testing
+  - xunit
+  - xunit.runner.visualstudio
+- name: project:Glow.Cli/Glow.Cli.csproj
+  type: project
+  description: 'Glow.Cli/Glow.Cli.csproj (restore target: net11.0)'
+  dependencies:
+  - microsoft.extensions.dependencyinjection
+  - spectre.console
+  - spectre.console.cli
+  - yamldotnet
