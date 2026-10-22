@@ -23,6 +23,8 @@ Open http://127.0.0.1:4173. Node.js 24 is recommended. The dashboard starts with
 
 ## Configuration
 
+The dashboard's **User manual** link opens built-in quick-start steps, a paste-ready YAML example, view and control explanations, privacy guidance, export instructions, and troubleshooting. The manual is included in the static site and packaged dashboard and can be read without JavaScript. See the [extended usage guide](docs/USAGE.md) for detailed input rules.
+
 ```yaml
 project: Example application
 dependencies:
@@ -72,7 +74,17 @@ The browser never evaluates MSBuild, imports files, or restores packages. Condit
 
 ### Convert a .NET solution locally
 
-The converter is a separate **.NET tool** using Spectre.Console, targeting .NET 10 and 11. Build and install it locally from the Glow checkout (a .NET 11 SDK is required to build both targets):
+The converter is a separate **.NET tool** using Spectre.Console, targeting .NET 10 and 11. Download the package from the [CLI v1.0.0 release](https://github.com/sujithq/glow/releases/tag/cli-v1.0.0), verify its `SHA256SUMS`, then install from the download directory with the .NET 10 SDK:
+
+```powershell
+dotnet tool install --global Glow.Cli --source .\glow-release --version 1.0.0 --framework net10.0
+glow --help
+glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+```
+
+Use **Import config** to open the generated YAML. The dashboard's **User manual** includes installation and conversion steps. This is a GitHub release, not a NuGet.org publication; the local `--source` is required. See the [CLI installation guide](docs/CLI.md#install-from-a-github-release) for download commands.
+
+Alternatively, build and install locally from the Glow checkout (a .NET 11 SDK is required to build both targets):
 
 ```powershell
 dotnet pack tools\Glow.Cli\Glow.Cli.csproj -c Release -o artifacts\packages

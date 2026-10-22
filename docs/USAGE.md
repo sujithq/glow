@@ -1,5 +1,7 @@
 # Using Glow
 
+For a quick start without leaving the dashboard, choose **User manual** in its header or footer. The built-in manual includes a sample configuration, CLI installation and conversion, graph controls, live-check privacy guidance, saving and reopening snapshots, and troubleshooting. Its expandable sections work without JavaScript.
+
 ## Load a project
 
 Use **Import config** for `.yaml`, `.yml`, `.json`, `.txt`, `.csproj`, or `packages.config`, or **Paste config** to choose a format and paste text. Imports are limited to 1 MB and 300 components. Invalid configurations show an error without replacing the current graph. Choosing a new valid configuration disables live polling. For infrastructure plans, first use the .NET CLI to produce the single YAML file; it can embed optional user-supplied Azure icons.
@@ -23,7 +25,7 @@ Use `dependencies` inside individual YAML components to model transitive package
 
 ### Local solution converter
 
-Install the `Glow.Cli` .NET tool using the [CLI setup guide](CLI.md). It targets .NET 10 and 11 and requires no Node.js installation. Separately restore your **trusted** solution using your configured NuGet feeds, then run the installed converter:
+Install the `Glow.Cli` .NET tool using the [CLI setup guide](CLI.md). Separately restore your **trusted** solution using your configured NuGet feeds, then run the installed converter:
 
 ```powershell
 dotnet restore "C:\src\App\App.slnx"

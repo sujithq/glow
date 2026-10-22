@@ -12,6 +12,8 @@
   <header>
     <a class="brand" href="./"><span aria-hidden="true">◈</span> GLOW</a>
     <span class="subtitle">Dependency intelligence / isometric edition</span>
+    <a href="#manual">User manual</a>
+    <a href="https://github.com/sujithq/glow/releases/tag/cli-v1.0.0">Download .NET tool ↗</a>
     <a href="./downloads/glow.tar.gz" download>Download Claude skill ↗</a>
     <a href="https://github.com/sujithq/glow">Source ↗</a>
   </header>
@@ -21,7 +23,7 @@
       <h1>See your stack.<br><span>Know its impact.</span></h1>
       <p>Explore dependencies, spot security risks, and trace the services that depend on them.</p>
     </section>
-    <section class="toolbar" aria-label="Dashboard controls">
+    <section id="dashboard" class="toolbar" aria-label="Dashboard controls">
       <label>Scenario
         <select id="scenario">
           <option value="glow.config.yaml">Mixed / commerce platform</option>
@@ -87,8 +89,109 @@
       <p id="updated">Demo data · not a live security assessment</p>
     </section>
     <p class="notice">Security scans require exact versions. Infrastructure imports show planned changes, not live health or security. “Healthy” is a configured health status, not proof of security.</p>
+    <section id="manual" class="manual" aria-labelledby="manual-title" tabindex="-1">
+      <p class="eyebrow">HELP / GETTING STARTED</p>
+      <h2 id="manual-title">End-user manual</h2>
+      <p>Glow maps packages, services, and their declared dependencies. Start with a demo, then load your own configuration. You do not need Claude or the command-line tool to use this dashboard.</p>
+      <h3>Your first map</h3>
+      <ol>
+        <li>Choose a <strong>Scenario</strong> to try a mixed, healthy, or vulnerable example. All demo findings are illustrative, not a live audit.</li>
+        <li>Select a block to open its component details. Check <strong>Direct dependencies</strong> and <strong>Update / incident blast radius</strong> to see what it uses and what depends on it.</li>
+        <li>Choose <strong>Import config</strong> for a local file, or <strong>Paste config</strong>, select its format, paste the contents, and choose <strong>Visualize</strong>.</li>
+        <li>Optionally choose <strong>Refresh once</strong> for public package and security checks. Read the privacy guidance below before enabling network access.</li>
+        <li>Choose <strong>Export JSON</strong> to save the displayed snapshot before leaving. Your configuration is not automatically saved.</li>
+      </ol>
+      <details>
+        <summary>Load your own dependencies</summary>
+        <p>Import Glow YAML (<code>.yaml</code> or <code>.yml</code>), <code>package.json</code>, <code>requirements.txt</code>, a C# <code>.csproj</code>, <code>packages.config</code>, or an exported Glow JSON snapshot. Each import is limited to 1 MB and 300 components. Invalid input shows an error and leaves the current graph in place.</p>
+        <p>For a small connected map, choose <strong>Paste config</strong> and <strong>Glow YAML</strong>, then paste this example:</p>
+        <pre><code id="manual-example">project: My application
+dependencies:
+  - name: shared-library
+    version: "1.0.0"
+    status: healthy
+services:
+  - name: api
+    status: running
+    dependencies: [shared-library]
+  - name: web
+    status: running
+    dependencies: [api]</code></pre>
+        <p>This uses an illustrative package name, not verified package or security data. Replace it with your own package and installed version. Package ecosystems are <code>npm</code> (default), <code>PyPI</code>, or <code>NuGet</code>. Every component name must be unique, and every name in a component's <code>dependencies</code> must exist in the same file.</p>
+        <p>Manifest imports list declared packages but do not resolve installed versions or invent dependency edges. Version ranges remain unresolved. Basic <code>requirements.txt</code> entries are supported; includes, URLs, editable installs, hashes, and environment markers are rejected. Browser C# imports accept unconditional package references, not project references, central package management, or MSBuild evaluation. A bare C# version is a minimum constraint, not an exact installed version.</p>
+        <p>For a restored .NET solution or Terraform/Bicep plan, use the <a href="#manual-cli">local CLI converter</a>, then import the generated Glow YAML. The browser does not directly load solutions or raw infrastructure plans.</p>
+      </details>
+      <details id="manual-cli">
+        <summary>Install and use the optional .NET CLI</summary>
+        <p>Use the CLI when you need resolved packages and project relationships from a .NET solution, or planned resource changes from Terraform/Bicep. Ordinary YAML and manifest imports do not need it. The CLI runs locally and needs no Node.js or Claude installation.</p>
+        <p>Install the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 SDK</a>, then download <code>Glow.Cli.1.0.0.nupkg</code> from the <a href="https://github.com/sujithq/glow/releases/tag/cli-v1.0.0">CLI v1.0.0 release</a>. The release includes <code>SHA256SUMS</code> for checking the download with <code>Get-FileHash</code>. This is a GitHub release package, not a package published to NuGet.org.</p>
+        <p>For example, in PowerShell:</p>
+        <pre><code id="manual-cli-install">New-Item -ItemType Directory -Path .\glow-release -Force
+Invoke-WebRequest https://github.com/sujithq/glow/releases/download/cli-v1.0.0/Glow.Cli.1.0.0.nupkg -OutFile .\glow-release\Glow.Cli.1.0.0.nupkg
+dotnet tool install --global Glow.Cli --source .\glow-release --version 1.0.0 --framework net10.0
+glow --help</code></pre>
+        <p>The package also supports .NET 11 with a matching runtime; .NET 10 is the stable installation choice. If <code>glow</code> is not found after installing, reopen the terminal and check that the .NET global tools directory is on your PATH. To upgrade an existing installation, use <code>dotnet tool update</code> with the same source, version, and framework options.</p>
+        <h3>Convert a trusted .NET solution</h3>
+        <pre><code>dotnet restore "C:\src\App\App.slnx"
+glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"</code></pre>
+        <p>Both <code>.sln</code> and <code>.slnx</code> work. Restore is a separate action that can execute MSBuild logic: never restore an untrusted project just to visualize it. The converter only reads existing restore assets and does not restore, build, or contact package feeds. For multiple restore targets, add an exact key such as <code>--target net10.0</code>; an error lists the available keys.</p>
+        <h3>Convert infrastructure plan files</h3>
+        <p>First generate Terraform plan JSON with your normal Terraform workflow, or compile Bicep to ARM template JSON and generate Azure what-if JSON separately. Then convert the local files:</p>
+        <pre><code>glow convert tfplan.json --output terraform.config.yaml
+glow convert main.json --what-if what-if.json --output azure.config.yaml</code></pre>
+        <p>Glow does not run Terraform, contact Azure, apply plans, or deploy resources. Optional <code>--icon-map</code> embeds your own local icon mapping. See the <a href="https://github.com/sujithq/glow/blob/main/docs/CLI.md">CLI guide</a> for plan generation, icon setup, supported formats, and limitations.</p>
+        <p>Finally, choose <strong>Import config</strong> and select the generated YAML. Review it before sharing: project paths, package identities, and resource names can be sensitive. Output files are never overwritten; choose a new output name or move the old file. Missing assets, conflicting versions, and maps exceeding 300 components or 1 MB fail with an error rather than producing a partial map.</p>
+      </details>
+      <details>
+        <summary>Read the views, colors, and summary</summary>
+        <ul>
+          <li><strong>Health:</strong> green means configured healthy; yellow can mean a warning, unverified data, deprecation, a version difference, or an API error; red means critical status or reported vulnerabilities. Healthy does not mean security-cleared.</li>
+          <li><strong>Security:</strong> red means reported findings. Green requires a successful exact-version OSV scan with no configured findings. Yellow means unchecked, unresolved, or limited coverage, including services without a package scan. Empty NuGet results remain limited coverage because matching is case-sensitive.</li>
+          <li><strong>Dependency:</strong> neutral green shows topology, not security clearance. Reported vulnerabilities can still pulse.</li>
+          <li><strong>Plan:</strong> infrastructure imports open here when planned changes are present. Green indicates create, yellow update, red delete, and purple replace; other actions appear in component details. Planned changes are not live health checks, and Glow does not apply them.</li>
+        </ul>
+        <p>Compact boxes are packages; taller two-tier towers are services or projects. The summary counts all loaded components, not just the filtered map. Health totals always use Health rules, even in another view. <strong>Reported findings</strong> sums reported vulnerability counts, not unique advisory IDs.</p>
+        <p><strong>Audience</strong> is a view shortcut, not access control: Developer and Architect choose Dependency, DevOps chooses Health, and Security chooses Security.</p>
+      </details>
+      <details>
+        <summary>Navigate the map and investigate impact</summary>
+        <ul>
+          <li>Use <strong>Layer</strong> to show packages, services, or both. <strong>Find</strong> filters by component name. Connections disappear when either endpoint is hidden.</li>
+          <li>Use <strong>+</strong> and <strong>−</strong> to resize the map, then scroll if needed. This is an isometric diagram, not a rotatable 3D camera.</li>
+          <li><strong>Reset view</strong> clears the search, restores all layers and default zoom, and clears the selection. It does not reload data or change the current view.</li>
+          <li>Click a block, or reach it with <kbd>Tab</kbd> and press <kbd>Enter</kbd> or <kbd>Space</kbd>. Hover or keyboard-focus a connection to read which component depends on which.</li>
+          <li>The inspector lists versions, scan status, licenses, advisories, errors, and direct dependencies. Dashed outlines mark direct and indirect consumers of the selected component; use the blast-radius buttons to inspect them.</li>
+        </ul>
+        <p>For an update or incident, select the affected package and review its consumers to plan testing. Impact follows only the relationships supplied in your configuration; it cannot predict breaking changes or prove exploitability. Reduced-motion system preferences disable pulsing.</p>
+      </details>
+      <details>
+        <summary>Live checks and privacy</summary>
+        <p>Importing and exploring files happens locally in your browser. Demo loading fetches bundled example files; registry and security checks remain off until you choose <strong>Refresh once</strong> or enable <strong>Poll every 60 seconds</strong>.</p>
+        <p>A refresh sends package names and versions to public npm/NuGet registries and OSV as applicable, and configured <code>repository: owner/repo</code> names to GitHub. Review private package and repository identities before opting in. No credentials are needed or stored; private feeds are unsupported.</p>
+        <p>Polling waits 60 seconds after each completed refresh while the page stays open. Turn it off to cancel an in-flight refresh. Loading a valid configuration disables polling and cancels outstanding checks.</p>
+        <p>Security checks require exact versions. PyPI release metadata is not fetched. GitHub results are combined commit statuses, not all Actions checks or service uptime. Review the last-refresh time, API error count, unresolved/limited scans, and individual component errors; an empty scan is not a security guarantee.</p>
+        <p>Every refresh starts from the loaded configuration. New live results replace previous live results, but configured findings are retained. Edit the original configuration to remove stale configured evidence after independently verifying a fix.</p>
+      </details>
+      <details>
+        <summary>Save, share, and reopen a snapshot</summary>
+        <p><strong>Export JSON</strong> downloads <code>glow-report.json</code> with the current graph, reported findings, scan/error states, and any refresh timestamp. Treat it as potentially sensitive: it contains component identities and relationships.</p>
+        <p>Use <strong>Import config</strong> to reopen the JSON. It is normalized as configuration, not trusted as a fresh scan: previous live clearance and timestamps are not restored as current evidence. Keep your original YAML or manifest for future edits. Reloading or closing the page loses unsaved changes and stops monitoring.</p>
+      </details>
+      <details>
+        <summary>Troubleshooting</summary>
+        <ul>
+          <li><strong>Import failed:</strong> check the message above the map or in the paste dialog. Confirm the selected format, file size, unique component names, and that all dependency references exist. Split maps larger than 300 components.</li>
+          <li><strong>Blank or incomplete map:</strong> choose Reset view to clear Find and Layer filters. Manifest imports do not supply transitive relationships; add independently verified edges in Glow YAML.</li>
+          <li><strong>Yellow after refreshing:</strong> inspect Security scan and component errors. Ranges, unknown versions, limited NuGet coverage, network failures, rate limits, and CORS restrictions do not produce clean scans.</li>
+          <li><strong>Findings remain after an upgrade:</strong> check that you loaded the new exact installed version. Configured findings persist until you update the source configuration; verify the original advisory before removing them.</li>
+          <li><strong>Demo cannot load:</strong> use the hosted site or serve the built dashboard over HTTP rather than opening the HTML directly from disk. Check the loading error and your connection, or import a local configuration.</li>
+        </ul>
+        <p>For detailed format rules and converter limitations, see the <a href="https://github.com/sujithq/glow/blob/main/docs/USAGE.md">extended usage guide</a>.</p>
+      </details>
+      <p><a href="#dashboard">Back to dashboard controls</a></p>
+    </section>
   </main>
-  <footer>Built for developers, DevOps, architects &amp; security teams. <a href="https://iso-glow.vercel.app/">iso-glow skill ↗</a> · <a href="https://github.com/sujithq/glow#readme">Documentation ↗</a></footer>
+  <footer>Built for developers, DevOps, architects &amp; security teams. <a href="#manual">User manual</a> · <a href="https://iso-glow.vercel.app/">iso-glow skill ↗</a> · <a href="https://github.com/sujithq/glow#readme">Documentation ↗</a></footer>
   <dialog id="editor">
     <form id="config-form">
       <h2>Load dependency configuration</h2>

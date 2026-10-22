@@ -85,6 +85,13 @@ dt { color: #98adc2; } dd { margin: 0; overflow-wrap: anywhere; }
 .monitor > div { flex: 1; min-width: 240px; } .monitor p { font-size: .8rem; max-width: 650px; }
 #updated { flex-basis: 100%; margin: 0; }
 .notice { font-size: .8rem; }
+.manual { margin-top: 32px; padding: 24px; background: #0d1826e6; border: 1px solid #2a394d; border-radius: 10px; scroll-margin-top: 20px; overflow-wrap: anywhere; }
+.manual p, .manual li { max-width: 90ch; line-height: 1.7; }
+.manual li { margin: 8px 0; color: #a4b7cd; }
+.manual details { border-top: 1px solid #2a394d; padding: 16px 0; }
+.manual summary { cursor: pointer; color: #89d7f4; font-weight: 600; }
+.manual pre { max-width: 100%; overflow: auto; padding: 16px; background: #09101b; border: 1px solid #26364a; border-radius: 6px; }
+.manual code, .manual kbd { font-family: monospace; color: #d8e4f2; }
 footer { border-top: 1px solid #263347; padding: 25px 4%; color: #8198b1; font-size: .8rem; }
 dialog { width: min(760px, 95vw); background: #101d2e; color: #d8e4f2; border: 1px solid #52708d; border-radius: 12px; padding: 28px; }
 dialog::backdrop { background: #000b; }

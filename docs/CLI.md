@@ -2,6 +2,33 @@
 
 `Glow.Cli` is a packable .NET tool with the command name `glow`. It uses Spectre.Console and Spectre.Console.Cli for help, argument validation, and terminal output. The tool targets **.NET 10 and .NET 11**; .NET 11 currently requires a matching preview SDK/runtime. It is independent of Node.js and the browser dashboard.
 
+## Install from a GitHub release
+
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) first. Download `Glow.Cli.1.0.0.nupkg` and `SHA256SUMS` from the [CLI v1.0.0 release](https://github.com/sujithq/glow/releases/tag/cli-v1.0.0). The package is framework-dependent and works on Windows, Linux, and macOS with a compatible runtime. .NET 10 is the stable choice; the optional .NET 11 target requires a matching runtime.
+
+For example, in PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Path .\glow-release -Force
+Invoke-WebRequest https://github.com/sujithq/glow/releases/download/cli-v1.0.0/Glow.Cli.1.0.0.nupkg -OutFile .\glow-release\Glow.Cli.1.0.0.nupkg
+Invoke-WebRequest https://github.com/sujithq/glow/releases/download/cli-v1.0.0/SHA256SUMS -OutFile .\glow-release\SHA256SUMS
+Get-FileHash .\glow-release\Glow.Cli.1.0.0.nupkg -Algorithm SHA256
+Get-Content .\glow-release\SHA256SUMS
+```
+
+Compare the hash with the published checksum before installing:
+
+```powershell
+dotnet tool install --global Glow.Cli --source .\glow-release --version 1.0.0 --framework net10.0
+glow --help
+```
+
+The source must be the directory containing the downloaded package. No repository checkout or Node.js installation is needed. On other shells, download the same files and supply your local directory to `--source`. The package is distributed through GitHub Releases, **not published to NuGet.org**.
+
+If `glow` is not found, reopen your terminal and ensure the global tools directory (`%USERPROFILE%\.dotnet\tools` on Windows, `$HOME/.dotnet/tools` on Linux/macOS) is on PATH. To upgrade an existing installation, download the new release and use `dotnet tool update --global Glow.Cli` with its source directory, version, and framework options. `dotnet tool uninstall --global Glow.Cli` removes the global installation.
+
+After installation, convert an input using the commands below, then import the generated YAML into the dashboard. The built-in **User manual** also includes these steps.
+
 ## Build and install from source
 
 From the repository root, with a .NET 11 SDK and the .NET 10/11 runtimes installed:
@@ -15,7 +42,7 @@ dotnet tool install Glow.Cli --tool-path artifacts\tools --source artifacts\pack
 
 The package contains both framework builds; the tool installer chooses a compatible framework. To build and test with **only .NET 10**, append `-p:TargetFrameworks=net10.0` to `dotnet test` and `dotnet pack`. That package contains just the .NET 10 build. To select a framework explicitly while installing, add `--framework net10.0` (or `net11.0` with a compatible runtime).
 
-Dependencies restore through the Microsoft package feed proxy in `tools\NuGet.Config`. The tool itself does not contact this feed or restore the input solution. The package is built locally; this repository does not automatically publish it to a public feed.
+Dependencies restore through the Microsoft package feed proxy in `tools\NuGet.Config`. The tool itself does not contact this feed or restore the input solution. Source builds remain available independently of the downloadable release; no workflow publishes to a NuGet feed.
 
 For a global installation, replace `--tool-path artifacts\tools` with `--global`. For a repository-local tool manifest, use `dotnet new tool-manifest` in the consuming repository, then `dotnet tool install Glow.Cli --local --source <absolute-package-directory> --version 1.0.0`. Do not commit the package binaries or generated configurations containing private data.
 
@@ -25,10 +52,10 @@ Restore a **trusted** solution separately using its configured feeds, then conve
 
 ```powershell
 dotnet restore "C:\src\App\App.slnx"
-.\artifacts\tools\glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
+glow convert "C:\src\App\App.slnx" --output "C:\src\App\glow.config.yaml"
 ```
 
-After a global installation the command is simply `glow convert ...`. `.sln` and `.slnx` are supported. Upload the generated YAML with Glow's **Import config** button; the browser does not need the solution directory.
+For the source-build tool-path installation, replace `glow` with `.\artifacts\tools\glow`. `.sln` and `.slnx` are supported. Upload the generated YAML with Glow's **Import config** button; the browser does not need the solution directory.
 
 | Option | Meaning |
 | --- | --- |
@@ -89,6 +116,21 @@ Icons are embedded as data URLs in the generated YAML so that it remains a singl
 Review generated configuration before sharing it. Terraform plan JSON and Azure what-if output can contain sensitive environment details even though the converter omits resource property bags; resource names and addresses remain in the graph.
 
 Multiple restore targets require an explicit key available in every included project. Conflicting package versions, missing/invalid assets, unsupported project types, and Glow's browser limits fail instead of generating a partial graph. The CLI cannot verify that assets are current. See [detailed conversion limitations](USAGE.md#local-solution-converter), including custom intermediate directories and privacy.
+
+## Create a CLI release
+
+The [CLI release workflow](../.github/workflows/release-cli.yml) runs on tags matching `cli-v*`. The tag must match the package version in `tools\Glow.Cli\Glow.Cli.csproj`. For example, version `1.0.1` uses tag `cli-v1.0.1`.
+
+Commit the version change and release workflow to the repository before tagging that commit. Then:
+
+```powershell
+git tag cli-v1.0.1
+git push origin cli-v1.0.1
+```
+
+The workflow tests both framework builds, checks browser interoperability, packs and installs the tool, smoke-tests solution conversion, and publishes the `.nupkg` plus `SHA256SUMS` as GitHub release assets. Tags with a prerelease package version create prereleases. It uses the repository's built-in Actions token, with release-write permission scoped to the release job; no NuGet API key is needed.
+
+Update the manual's versioned download links and installation commands for each release. Publishing to NuGet.org is a separate opt-in setup; a GitHub release does not make `dotnet tool install --global Glow.Cli` work without the downloaded local source.
 
 ## Add another input format
 
