@@ -54,11 +54,11 @@ export function renderGraph(svg, graph, { view, selected, affected, layer, searc
     const state = health(node, view);
     const group = svgElement('g', {
       transform: `translate(${x},${y})`,
-      class: `block ${node.kind} ${state}${selected === node.id ? ' selected' : ''}${affected.includes(node.id) ? ' impacted' : ''}${node.vulnerabilityCount ? ' vulnerable' : ''}`,
+      class: `block ${node.kind} ${state}${view === 'plan' && node.planChange ? ` plan-${node.planChange}` : ''}${selected === node.id ? ' selected' : ''}${affected.includes(node.id) ? ' impacted' : ''}${node.vulnerabilityCount ? ' vulnerable' : ''}`,
       tabindex: '0', role: 'button', 'aria-pressed': String(selected === node.id),
-      'aria-label': `${node.name}, ${node.kind}, ${state}, ${node.vulnerabilityCount} reported vulnerabilities`,
+      'aria-label': `${node.name}, ${node.kind}, ${view === 'plan' ? `planned ${node.planChange ?? 'unknown'}` : state}, ${node.vulnerabilityCount} reported vulnerabilities`,
     });
-    group.append(svgElement('title', {}, `${node.name} ${node.version}\n${state}`));
+    group.append(svgElement('title', {}, `${node.name} ${node.version}\n${view === 'plan' ? `Planned change: ${node.planChange ?? 'unknown'}` : state}`));
     if (node.kind === 'service') {
       group.append(svgElement('path', { class: 'block-left', d: 'M -52 -48 L 0 -21 L 0 27 L -52 0 Z' }));
       group.append(svgElement('path', { class: 'block-right', d: 'M 0 -21 L 52 -48 L 52 0 L 0 27 Z' }));
@@ -73,9 +73,18 @@ export function renderGraph(svg, graph, { view, selected, affected, layer, searc
       group.append(svgElement('path', { class: 'block-top', d: 'M 0 -27 L 52 0 L 0 27 L -52 0 Z' }));
       group.append(svgElement('path', { class: 'light-strip', d: 'M -45 32 L 0 55 L 45 32' }));
     }
-    group.append(svgElement('text', {
-      class: 'plate', y: node.kind === 'service' ? -43 : 5, 'text-anchor': 'middle',
-    }, String(index + 1).padStart(2, '0')));
+    if (node.icon) {
+      const size = node.kind === 'service' ? 28 : 24;
+      const centerY = node.kind === 'service' ? -48 : 0;
+      group.append(svgElement('image', {
+        href: node.icon, x: -size / 2, y: centerY - size / 2, width: size, height: size,
+        preserveAspectRatio: 'xMidYMid meet', class: 'resource-icon', 'aria-hidden': 'true',
+      }));
+    } else {
+      group.append(svgElement('text', {
+        class: 'plate', y: node.kind === 'service' ? -43 : 5, 'text-anchor': 'middle',
+      }, String(index + 1).padStart(2, '0')));
+    }
     const label = node.name.length > 22 ? `${node.name.slice(0, 19)}…` : node.name;
     group.append(svgElement('text', { class: 'node-label', y: 85, 'text-anchor': 'middle' }, label));
     group.addEventListener('click', () => onSelect(node.id));

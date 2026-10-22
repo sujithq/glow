@@ -23,10 +23,12 @@ function details() {
     return;
   }
   const impacted = affectedBy(graph, node.id);
-  panel.append(element('p', `${node.kind.toUpperCase()} / ${node.ecosystem}`, 'eyebrow'),
+  panel.append(element('p', node.resourceType ? 'AZURE RESOURCE' : `${node.kind.toUpperCase()} / ${node.ecosystem}`, 'eyebrow'),
     element('h2', node.name), element('p', node.description || 'No description provided.'));
   const rows = [
     ['Version', node.version || 'Not specified'], ['Health', health(node)],
+    ...(node.resourceType ? [['Azure resource type', node.resourceType]] : []),
+    ...(node.planChange ? [['Planned change', node.planChange]] : []),
     ['License', node.license], ['Security scan', node.scan],
     [node.ecosystem === 'NuGet' ? 'Latest stable NuGet version' : 'Latest registry version', node.latest || 'Not checked'],
     ['Version differs from latest', node.updateAvailable ? 'Yes — review compatibility' : 'Not established'],
@@ -69,6 +71,7 @@ function details() {
 function draw() {
   if (!graph) return;
   const focus = document.activeElement?.getAttribute('aria-label');
+  $('plan-legend').hidden = view !== 'plan';
   $('project').textContent = graph.project;
   $('count').textContent = graph.nodes.length;
   for (const status of ['healthy', 'warning', 'critical']) {
@@ -96,8 +99,10 @@ function load(source, filename) {
   $('live').checked = false;
   base = parsed;
   graph = structuredClone(base);
+  view = graph.nodes.some(node => node.planChange) ? 'plan' : 'health';
   selected = undefined;
   $('updated').textContent = 'Local configuration · not a live security assessment';
+  $('plan-legend').hidden = view !== 'plan';
   message(`Loaded ${graph.project}. Live network access is off.`);
   draw();
 }
@@ -161,7 +166,11 @@ $('config-form').onsubmit = event => {
   catch (error) { $('editor-error').textContent = error.message; }
 };
 for (const button of document.querySelectorAll('[data-view]')) {
-  button.onclick = () => { view = button.dataset.view; draw(); };
+  button.onclick = () => {
+    view = button.dataset.view;
+    $('plan-legend').hidden = view !== 'plan';
+    draw();
+  };
 }
 $('audience').onchange = () => {
   view = { developer: 'dependency', devops: 'health', architect: 'dependency', security: 'security' }[$('audience').value];

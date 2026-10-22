@@ -11,7 +11,7 @@ public sealed class ConversionService(IEnumerable<IInputConverter> converters)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var candidates = _converters.Where(converter =>
-            converter.FileExtensions.Contains(Path.GetExtension(inputPath), StringComparer.OrdinalIgnoreCase)).ToArray();
+            converter.FileExtensions.Any(extension => inputPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (candidates.Length != 1)
         {
             throw new ConversionException(candidates.Length == 0

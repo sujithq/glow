@@ -10,8 +10,12 @@ public sealed record GlowComponent
     public required string Name { get; init; }
     public string? Version { get; init; }
     public string? Ecosystem { get; init; }
+    public string? Status { get; init; }
     public string? Type { get; init; }
     public string? Description { get; init; }
+    public string? PlanChange { get; init; }
+    public string? ResourceType { get; init; }
+    public string? Icon { get; init; }
     public IReadOnlyList<string> Dependencies { get; init; } = [];
 }
 

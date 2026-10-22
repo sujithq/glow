@@ -47,6 +47,13 @@ input[type="search"], textarea { background: #0c1522; color: #d8e4f2; border: 1p
 .block { --color: var(--healthy); cursor: pointer; }
 .block.warning { --color: var(--warning); }
 .block.critical { --color: var(--critical); }
+.block.plan-create { --color: #52ebbc; }
+.block.plan-update, .block.plan-deploy { --color: #ffd079; }
+.block.plan-delete, .block.plan-forget, .block.plan-unsupported { --color: #ff6985; }
+.block.plan-replace { --color: #c39bff; }
+.block.plan-read { --color: #89d7f4; }
+.block.plan-no-change, .block.plan-ignore, .block.plan-no-effect { --color: #8292a6; }
+.block.plan-unknown { --color: #b1c0d0; }
 .block path { stroke: var(--color); stroke-width: 1.3; stroke-linejoin: round; }
 .block-top { fill: #203746; } .block-left { fill: #122b38; } .block-right { fill: #17222f; }
 .block .service-band { fill: none; stroke-width: 2; opacity: .85; filter: drop-shadow(0 0 3px var(--color)); pointer-events: none; }
@@ -54,6 +61,7 @@ input[type="search"], textarea { background: #0c1522; color: #d8e4f2; border: 1p
 .block:hover .block-top, .block:focus .block-top, .block.selected .block-top { fill: #354f62; stroke-width: 3; }
 .block.impacted .block-top { stroke-dasharray: 4 3; stroke-width: 3; }
 .plate { fill: var(--color); font: 14px monospace; pointer-events: none; }
+.resource-icon { pointer-events: none; }
 .node-label { fill: #ccdaeb; font-size: 12px; pointer-events: none; }
 .block.vulnerable .light-strip { animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 50% { filter: drop-shadow(0 0 11px var(--critical)); opacity: .55; } }
@@ -61,6 +69,10 @@ input[type="search"], textarea { background: #0c1522; color: #d8e4f2; border: 1p
 .legend-hint { margin-left: auto; }
 .shape-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .shape-key svg { width: 23px; height: 23px; overflow: visible; fill: none; stroke: #9eb9d1; stroke-width: 1.5; stroke-linejoin: round; }
+.plan-legend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.plan-legend[hidden] { display: none; }
+.dot.plan-create { background: #52ebbc; } .dot.plan-update { background: #ffd079; }
+.dot.plan-delete { background: #ff6985; } .dot.plan-replace { background: #c39bff; }
 .dot { width: 7px; height: 7px; border-radius: 50%; }
 .dot.healthy { background: var(--healthy); } .dot.warning { background: var(--warning); } .dot.critical { background: var(--critical); }
 aside { padding: 24px; max-height: 900px; overflow: auto; font-size: .85rem; }

@@ -54,6 +54,7 @@
             <button data-view="health" aria-pressed="true">Health</button>
             <button data-view="security" aria-pressed="false">Security</button>
             <button data-view="dependency" aria-pressed="false">Dependency</button>
+            <button data-view="plan" aria-pressed="false">Plan</button>
           </div>
         </div>
         <div class="graph-controls">
@@ -69,6 +70,10 @@
           <span class="dot healthy"></span>Healthy <span class="dot warning"></span>Warning / unverified <span class="dot critical"></span>Critical
           <span class="shape-key"><svg viewBox="0 0 28 24" aria-hidden="true"><path d="M14 1 26 7 14 13 2 7 14 1ZM2 7v9l12 7 12-7V7M14 13v10"/></svg>Package</span>
           <span class="shape-key"><svg viewBox="0 0 28 30" aria-hidden="true"><path d="M14 1 26 7 14 13 2 7 14 1ZM2 7v13l12 8 12-8V7M14 13v15M4 15l10 6 10-6M4 19l10 6 10-6"/></svg>Service / project</span>
+          <span id="plan-legend" class="plan-legend" hidden>
+            <span class="dot plan-create"></span>Create <span class="dot plan-update"></span>Update
+            <span class="dot plan-delete"></span>Delete <span class="dot plan-replace"></span>Replace
+          </span>
           <span class="legend-hint">Click a component · hover a connection · tab to explore</span>
         </div>
       </div>
@@ -81,7 +86,7 @@
       <button id="export">Export JSON</button>
       <p id="updated">Demo data · not a live security assessment</p>
     </section>
-    <p class="notice">Security scans require exact versions. Manifests do not contain transitive dependency trees: add explicit relationships in YAML. “Healthy” is a configured health status, not proof of security.</p>
+    <p class="notice">Security scans require exact versions. Infrastructure imports show planned changes, not live health or security. “Healthy” is a configured health status, not proof of security.</p>
   </main>
   <footer>Built for developers, DevOps, architects &amp; security teams. <a href="https://iso-glow.vercel.app/">iso-glow skill ↗</a> · <a href="https://github.com/sujithq/glow#readme">Documentation ↗</a></footer>
   <dialog id="editor">

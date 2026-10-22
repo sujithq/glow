@@ -44,7 +44,7 @@ public sealed class ToolApplicationTests
         using var errors = new TestConsole();
         Assert.Equal(1, await ToolApplication.Create(console, errors: errors).RunAsync(["convert", "bad.json"]));
         Assert.Empty(console.Output);
-        Assert.Contains("No converter supports", errors.Output);
+        Assert.Contains("Input file not found", errors.Output);
     }
 
     [Fact]
@@ -72,9 +72,10 @@ public sealed class ToolApplicationTests
         using var console = new TestConsole();
         Assert.Equal(1, await ToolApplication.Create(console).RunAsync(["convert", Path.Combine(fixture.Root, "no.json"), "-o", output]));
         Assert.False(File.Exists(output));
-        Assert.Contains("No converter supports", console.Output);
+        Assert.Contains("Input file not found", console.Output);
         Assert.NotEqual(0, await ToolApplication.Create(console).RunAsync(["convert"]));
         Assert.NotEqual(0, await ToolApplication.Create(console).RunAsync(["convert", "input.slnx", "--unknown"]));
+        Assert.NotEqual(0, await ToolApplication.Create(console).RunAsync(["convert", "input.unsupported"]));
     }
 
     [Fact]

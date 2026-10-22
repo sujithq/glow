@@ -75,3 +75,41 @@ test('.NET tool YAML imports into the browser with projects, packages and revers
     assert.equal(await readFile(output, 'utf8'), yaml);
   }
 });
+
+test('.NET infrastructure plan YAML imports into the browser with actions, edges, and icons', {
+  skip: !process.env.GLOW_CLI_DLL && 'Set GLOW_CLI_DLL to a built Glow.Cli.dll to run interoperability coverage.',
+}, async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'glow-iac-interop-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dll = path.resolve(process.env.GLOW_CLI_DLL);
+  const template = path.join(root, 'main.json');
+  const whatIf = path.join(root, 'what-if.json');
+  const output = path.join(root, 'glow.config.yaml');
+  const iconPath = path.join(root, 'storage.svg');
+  const iconMap = path.join(root, 'icons.json');
+  await writeFile(template, JSON.stringify({
+    $schema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
+    resources: [
+      { type: 'Microsoft.Storage/storageAccounts', name: 'data' },
+      { type: 'Microsoft.Web/sites', name: 'api',
+        dependsOn: ["[resourceId('Microsoft.Storage/storageAccounts', 'data')]"] },
+    ],
+  }));
+  await writeFile(whatIf, JSON.stringify({ properties: { changes: [
+    { resourceId: '/subscriptions/id/resourceGroups/demo/providers/Microsoft.Storage/storageAccounts/data', changeType: 'Create' },
+    { resourceId: '/subscriptions/id/resourceGroups/demo/providers/Microsoft.Web/sites/api', changeType: 'Modify' },
+  ] } }));
+  await writeFile(iconPath, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M1 1h8v8H1z"/></svg>');
+  await writeFile(iconMap, JSON.stringify({ 'Microsoft.Storage/storageAccounts': 'storage.svg' }));
+
+  const result = spawnSync('dotnet', [dll, 'convert', template, '--what-if', whatIf,
+    '--icon-map', iconMap, '-o', output], { encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  const graph = parseInput(await readFile(output, 'utf8'));
+  const storage = graph.nodes.find(node => node.resourceType === 'Microsoft.Storage/storageAccounts');
+  const app = graph.nodes.find(node => node.name === 'Microsoft.Web/sites/api');
+  assert.equal(storage.planChange, 'create');
+  assert.match(storage.icon, /^data:image\/svg\+xml;base64,/);
+  assert.equal(app.planChange, 'update');
+  assert.deepEqual(app.dependencies, [storage.name]);
+});

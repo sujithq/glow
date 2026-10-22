@@ -12,6 +12,9 @@ The root is an object with `project` (string), `dependencies` (array), and/or `s
 | `status` | `healthy` (default), `warning`, `critical`; `running` maps to healthy |
 | `type` | Optional descriptive category |
 | `description` | Optional plain text |
+| `planChange` | Optional planned action: `create`, `update`, `delete`, `replace`, `read`, `forget`, `no-change`, `ignore`, `deploy`, `no-effect`, `unsupported`, or `unknown` |
+| `resourceType` | Optional Azure Resource Manager resource type |
+| `icon` | Optional bounded base64 PNG/SVG data URL; external icon URLs are rejected |
 | `license` | Optional plain text, otherwise `Unknown` |
 | `repository` | Optional public GitHub `owner/repo` for combined commit status |
 | `dependencies` | Array of existing component names this component depends on |
@@ -55,11 +58,11 @@ var configuration = await converter.ConvertAsync(solutionPath, new ConversionOpt
 var yamlText = GlowYamlWriter.Serialize(configuration);
 ```
 
-`IInputConverter` exposes supported `FileExtensions` and `ConvertAsync(inputPath, options, cancellationToken)`. `DotnetSolutionConverter` reads `.sln`/`.slnx` and local NuGet assets versions 3/4 from each project's default `obj` directory. It performs filesystem reads only, never builds/restores or network requests. Projects are path-qualified service nodes; package IDs retain NuGet spelling and references normalize on import.
+`IInputConverter` exposes supported `FileExtensions` and `ConvertAsync(inputPath, options, cancellationToken)`. `DotnetSolutionConverter` reads `.sln`/`.slnx` and local NuGet assets versions 3/4 from each project's default `obj` directory. `InfrastructurePlanConverter` reads Terraform plan JSON from `terraform show -json` or compiled ARM template JSON with optional Azure what-if JSON. Both converters perform local file reads only; the infrastructure converter never runs Terraform, Bicep, or Azure CLI and never deploys. Terraform configuration references and ARM `dependsOn` entries become graph edges. It omits plan property bags, retains plan action/resource type metadata, and can embed mapped, sanitized local SVG/PNG assets as data URLs.
 
 `ConversionService` selects one registered converter by input extension. `GlowYamlWriter.Serialize` validates component names, ecosystems, duplicate identities, dependency references, node count, and UTF-8 output size before serializing deterministic YAML. Future converters reuse the same model and validation. Browser interoperability is tested using the actual JavaScript `parseInput` implementation.
 
-The command is `glow convert <input> [-o <file>] [-t <target>]`. Spectre.Console.Cli provides help and validation; existing output files are never overwritten, and errors exit nonzero. See [CLI setup and extension](CLI.md) and [conversion limitations](USAGE.md#local-solution-converter).
+The command is `glow convert <input> [-o <file>] [-t <target>] [--what-if <file>] [--icon-map <file>]`. `--what-if` applies only to ARM template JSON. `--icon-map` is an optional local JSON mapping resource types to relative SVG/PNG files; the files must stay beside/under the map file. Spectre.Console.Cli provides help and validation; existing output files are never overwritten, and errors exit nonzero. See [CLI setup and extension](CLI.md) and [conversion limitations](USAGE.md#local-solution-converter).
 
 ## Live API (`src/data-fetcher.js`)
 
@@ -92,7 +95,7 @@ However, OSV's [package lookup](https://github.com/google/osv.dev/blob/902dd4b5c
 
 The adapter uses an original SVG implementation. The iso-glow authoring contract is a figure object with `id`, `name`, `hint`, `aria`, and `mount(stage, api)`, which may return lifecycle handlers. Glow returns an `unmount()` handler to remove its scene.
 
-Graph component types use distinct geometry independent of their health/security status colors: packages remain compact isometric boxes, while services (including project nodes imported by the .NET tool) appear as taller towers with two horizontal bands. The graph legend identifies both shapes. Tower-aware spacing and edge anchors preserve the existing dependency connections.
+Graph component types use distinct geometry independent of their health/security status colors: packages remain compact isometric boxes, while services (including project nodes imported by the .NET tool) appear as taller towers with two horizontal bands. The graph legend identifies both shapes. Tower-aware spacing and edge anchors preserve the existing dependency connections. The Plan view uses planned action colors and may display icons encoded as validated base64 image data URLs. Icons preserve their aspect ratio and stay upright; untrusted external URLs are rejected.
 
 To integrate with an **existing installed iso-glow gallery**:
 

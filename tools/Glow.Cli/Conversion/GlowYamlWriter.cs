@@ -9,6 +9,13 @@ public static partial class GlowYamlWriter
 {
     public const int MaximumComponents = 300;
     public const int MaximumBytes = 1_000_000;
+    private const int MaximumIconCharacters = 200_000;
+    private static readonly HashSet<string> Statuses = new(StringComparer.Ordinal) { "healthy", "warning", "critical" };
+    private static readonly HashSet<string> PlanChanges = new(StringComparer.Ordinal)
+    {
+        "create", "update", "delete", "replace", "read", "forget", "no-change", "ignore",
+        "deploy", "no-effect", "unsupported", "unknown",
+    };
 
     public static string Serialize(GlowConfiguration configuration)
     {
@@ -26,6 +33,22 @@ public static partial class GlowYamlWriter
             if (string.IsNullOrEmpty(component.Name) || component.Name.Length > 200)
             {
                 throw new ConversionException("Each component needs a name of at most 200 characters.");
+            }
+            if (component.Status is not null && !Statuses.Contains(component.Status))
+            {
+                throw new ConversionException($"Invalid status for {component.Name}.");
+            }
+            if (component.PlanChange is not null && !PlanChanges.Contains(component.PlanChange))
+            {
+                throw new ConversionException($"Invalid planned change for {component.Name}.");
+            }
+            if (component.ResourceType is { Length: > 200 })
+            {
+                throw new ConversionException($"Resource type for {component.Name} exceeds 200 characters.");
+            }
+            if (component.Icon is not null && (component.Icon.Length > MaximumIconCharacters || !DataIcon().IsMatch(component.Icon)))
+            {
+                throw new ConversionException($"Invalid embedded icon for {component.Name}; only bounded PNG or SVG data icons are supported.");
             }
             var ecosystem = component.Ecosystem ?? "npm";
             if (ecosystem is not ("npm" or "PyPI" or "NuGet"))
@@ -75,4 +98,7 @@ public static partial class GlowYamlWriter
 
     [GeneratedRegex(@"^[A-Za-z0-9_.-]{1,100}$", RegexOptions.CultureInvariant)]
     private static partial Regex NugetId();
+
+    [GeneratedRegex(@"^data:image/(?:png|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$", RegexOptions.CultureInvariant)]
+    private static partial Regex DataIcon();
 }

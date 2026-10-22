@@ -1,6 +1,9 @@
 namespace Glow.Cli.Conversion;
 
-public sealed record ConversionOptions(string? Target = null);
+public sealed record ConversionOptions(
+    string? Target = null,
+    string? WhatIfPath = null,
+    string? IconMapPath = null);
 
 public interface IInputConverter
 {

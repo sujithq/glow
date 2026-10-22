@@ -55,6 +55,28 @@ test('security never treats unscanned components as cleared', () => {
   assert.equal(health({ ...node, vulnerabilityCount: 1 }), 'critical');
   assert.equal(health({ ...node, errors: ['offline'] }), 'warning');
 });
+test('infrastructure plan metadata and embedded icons are validated and preserved', () => {
+  const icon = `data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}`;
+  const graph = normalizeConfig({
+    services: [{
+      name: 'Microsoft.Storage/storageAccounts/data',
+      type: 'azurerm_storage_account',
+      resourceType: 'Microsoft.Storage/storageAccounts',
+      planChange: 'replace',
+      icon,
+    }],
+  });
+  assert.equal(graph.nodes[0].planChange, 'replace');
+  assert.equal(graph.nodes[0].resourceType, 'Microsoft.Storage/storageAccounts');
+  assert.equal(graph.nodes[0].icon, icon);
+  for (const node of [
+    { name: 'bad-action', planChange: 'delete;alert(1)' },
+    { name: 'bad-icon', icon: 'https://example.com/icon.svg' },
+    { name: 'bad-icon', icon: `data:image/svg+xml;base64,${'A'.repeat(200_001)}` },
+  ]) {
+    assert.throws(() => normalizeConfig({ services: [node] }));
+  }
+});
 test('JSON snapshots retain findings but never reuse previous scan clearance', () => {
   const graph = normalizeConfig({ dependencies: [
     { name: 'a', vulnerabilities: [{ id: 'CVE-2025-12345' }] },

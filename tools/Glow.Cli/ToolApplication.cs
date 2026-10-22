@@ -12,7 +12,7 @@ public static class ToolApplication
     {
         var services = new ServiceCollection();
         services.AddSingleton(console);
-        foreach (var converter in converters ?? [new DotnetSolutionConverter()])
+        foreach (var converter in converters ?? [new DotnetSolutionConverter(), new InfrastructurePlanConverter()])
         {
             services.AddSingleton(converter);
         }
@@ -24,7 +24,7 @@ public static class ToolApplication
             configuration.SetApplicationVersion("1.0.0");
             configuration.Settings.Console = console;
             configuration.AddCommand<ConvertCommand>("convert")
-                .WithDescription("Convert local dependency sources to Glow YAML without executing projects or contacting feeds.");
+                .WithDescription("Convert local dependency sources to Glow YAML without deploying infrastructure or contacting feeds.");
             configuration.SetExceptionHandler((exception, _) =>
             {
                 (errors ?? console).MarkupLineInterpolated($"[red]Glow conversion failed:[/] {exception.Message}");

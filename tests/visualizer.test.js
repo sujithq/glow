@@ -72,3 +72,22 @@ test('shape classes remain distinct when health colors change or nodes are filte
   assert.equal(filtered.children.filter(node => node.getAttribute('class')?.startsWith('block ')).length, 1);
   assert.ok(filtered.children.some(node => node.getAttribute('class')?.includes('block service')));
 });
+
+test('plan view colors actions and shows supplied resource icons without distorting them', () => {
+  const graph = normalizeConfig({
+    services: [{
+      name: 'Microsoft.Storage/storageAccounts/data',
+      planChange: 'create',
+      icon: `data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}`,
+    }],
+  });
+  const svg = render(graph, { view: 'plan' });
+  const node = svg.children.find(child => child.getAttribute('class')?.includes('block service'));
+  const icon = node.children.find(child => child.tag === 'image');
+
+  assert.match(node.getAttribute('class'), /plan-create/);
+  assert.match(node.getAttribute('aria-label'), /planned create/);
+  assert.equal(icon.getAttribute('preserveAspectRatio'), 'xMidYMid meet');
+  assert.equal(icon.getAttribute('href'), graph.nodes[0].icon);
+  assert.equal(node.children.some(child => child.getAttribute('class') === 'plate'), false);
+});

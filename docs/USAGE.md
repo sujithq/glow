@@ -2,7 +2,7 @@
 
 ## Load a project
 
-Use **Import config** for `.yaml`, `.yml`, `.json`, `.txt`, `.csproj`, or `packages.config`, or **Paste config** to choose a format and paste text. Imports are limited to 1 MB and 300 components. Invalid configurations show an error without replacing the current graph. Choosing a new valid configuration disables live polling.
+Use **Import config** for `.yaml`, `.yml`, `.json`, `.txt`, `.csproj`, or `packages.config`, or **Paste config** to choose a format and paste text. Imports are limited to 1 MB and 300 components. Invalid configurations show an error without replacing the current graph. Choosing a new valid configuration disables live polling. For infrastructure plans, first use the .NET CLI to produce the single YAML file; it can embed optional user-supplied Azure icons.
 
 `package.json` merges dependencies, devDependencies, peerDependencies, and optionalDependencies. Duplicate names use the first occurrence in that order, except optionalDependencies override other entries, matching npm's regular/optional precedence. Version ranges are retained, not resolved. No dependency relationships are invented.
 
@@ -45,6 +45,15 @@ The output includes project paths and package identities; review it before shari
 
 NuGet documents the restore graph and its default location in [How NuGet resolves package dependencies](https://learn.microsoft.com/en-us/nuget/concepts/dependency-resolution).
 
+### Terraform and Bicep infrastructure plans
+
+The local .NET tool also converts:
+
+- Terraform JSON from `terraform show -json <plan>`: resource addresses and `change.actions` become service nodes and plan colors; Terraform configuration expression references become dependency edges.
+- A compiled ARM template JSON plus Azure what-if JSON: template resources and dependencies become nodes/edges; `changeType` becomes the planned action. What-if-only resources (such as deletions) are included.
+
+See the [CLI guide](CLI.md#convert-terraform-and-bicepazure-plans) for commands, optional Azure icon mapping, and supported change indicators. Glow reads the JSON files locally and never runs Terraform/Bicep/Azure CLI or deploys. Creating a what-if result separately requires Azure permissions equivalent to deployment. Plan output is not a health or security assessment. Resource property bags are omitted, but names and addresses may still reveal infrastructure details; review the generated YAML before sharing.
+
 ## Explore
 
 - **Health:** configured healthy/warning/critical status, configured/live findings, metadata differences, deprecation, and API errors.
@@ -53,6 +62,7 @@ NuGet documents the restore graph and its default location in [How NuGet resolve
 - **Audience:** shortcuts to a useful view, not access control. Developer/Architect select Dependency; DevOps selects Health; Security selects Security.
 - **Layer:** show all nodes, packages, or services. Edges with hidden endpoints disappear.
 - **Shape:** packages render as compact boxes; services/projects render as taller two-tier towers. Shape identifies component type while color continues to indicate health/security status. The graph legend shows both cues.
+- **Plan:** when an imported infrastructure graph contains planned changes, Glow opens in Plan view. Create, update, delete, and replacement actions have distinct colors; other reported actions remain visible. Optional Azure icons are displayed upright without changing their aspect ratio.
 - **Find / zoom / reset:** filter components, adjust SVG size, and restore the map.
 - **Select:** click or focus a block with Tab and press Enter/Space. The inspector shows versions, license, scan state, findings, configured dependencies, and affected dependents. Dashed outlines identify affected consumers. Hover/focus connections to highlight their source/target relationship.
 

@@ -3,6 +3,9 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
 export const MAX_INPUT_BYTES = 1_000_000;
 const statuses = new Set(['healthy', 'warning', 'critical']);
+const planChanges = new Set(['create', 'update', 'delete', 'replace', 'read', 'forget', 'no-change',
+  'ignore', 'deploy', 'no-effect', 'unsupported', 'unknown']);
+const iconData = /^data:image\/(?:png|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/;
 const nugetId = /^[A-Za-z0-9_.-]{1,100}$/;
 const componentName = node => node.kind !== 'service' && node.ecosystem === 'NuGet'
   ? node.name?.toLowerCase() : node.name;
@@ -40,6 +43,15 @@ export function normalizeConfig(config) {
     names.add(name);
     const status = node.status === 'running' ? 'healthy' : node.status ?? 'healthy';
     if (!statuses.has(status)) throw new Error(`Invalid status for ${node.name}.`);
+    if (node.planChange !== undefined && !planChanges.has(node.planChange)) {
+      throw new Error(`Invalid planned change for ${node.name}.`);
+    }
+    if (node.resourceType !== undefined && (typeof node.resourceType !== 'string' || node.resourceType.length > 200)) {
+      throw new Error(`Invalid resource type for ${node.name}.`);
+    }
+    if (node.icon !== undefined && (typeof node.icon !== 'string' || node.icon.length > 200000 || !iconData.test(node.icon))) {
+      throw new Error(`Invalid embedded icon for ${node.name}.`);
+    }
     const refs = list(node.dependencies, `${node.name}.dependencies`);
     if (refs.some(ref => typeof ref !== 'string')) throw new Error('Dependency references must be names.');
     const vulnerabilities = node.vulnerabilities ?? [];
@@ -55,6 +67,9 @@ export function normalizeConfig(config) {
       ...(packageName !== undefined ? { packageName } : {}),
       version: text(node.version), status, type: text(node.type, node.kind),
       description: text(node.description), license: text(node.license, 'Unknown'),
+      ...(node.planChange !== undefined ? { planChange: node.planChange } : {}),
+      ...(node.resourceType !== undefined ? { resourceType: node.resourceType } : {}),
+      ...(node.icon !== undefined ? { icon: node.icon } : {}),
       repository: text(node.repository), deprecated: Boolean(node.deprecated),
       dependencies: [...new Set(refs)], advisories,
       vulnerabilityCount: Array.isArray(vulnerabilities) ? advisories.length : vulnerabilities,
