@@ -20,7 +20,7 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "^5.12.0",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
